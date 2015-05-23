@@ -71,6 +71,61 @@ public class AntColony extends JFrame
 			setAntLocation(ant, ant.rect.x + dx, ant.rect.y + dy);
 		}
 
+		public synchronized boolean isVisible(Ant visor, Ant target, int range)
+		{
+			return calcDistance(visor, target) < range;
+		}
+		
+		public int calcDistance(Ant ant1, Ant ant2)
+		{
+			return (int) Math.sqrt((ant1.rect.x - ant2.rect.x) * (ant1.rect.x - ant2.rect.x) + (ant1.rect.y - ant2.rect.y) * (ant1.rect.y - ant2.rect.y));
+		}
+		
+		public synchronized void moveAntTowards(Ant ant, Ant target, int space)
+		{
+			checkID(ant.id);
+			checkID(target.id);
+			
+			int x2 = ant.rect.x;
+			int y2 = ant.rect.y;
+			int x1 = target.rect.x;
+			int y1 = target.rect.y;
+			int distance = calcDistance(ant, target);
+		
+			if (distance != 0 && distance > space)
+			{
+				int dx = (int) (x1 - x2) * (distance - space)/distance;
+				int dy = (int) (y1 - y2) * (distance - space)/distance;
+				antPanel.moveAnt(ant, dx, dy);
+			}
+		}
+
+		public synchronized void separateAntsBy(Ant ant, Ant target, int space)
+		{
+			checkID(ant.id);
+			checkID(target.id);
+			
+			int x2 = ant.rect.x;
+			int y2 = ant.rect.y;
+			int x1 = target.rect.x;
+			int y1 = target.rect.y;
+			int distance = calcDistance(ant, target);
+		
+			if (distance != 0 && distance < space)
+			{
+				int dx = (int) (x1 - x2) * (distance - space)/distance;
+				int dy = (int) (y1 - y2) * (distance - space)/distance;
+				antPanel.moveAnt(ant, dx, dy);
+			}
+		}
+		
+		public void fluctuateAntPosition(Ant ant, Random rand)
+		{
+			int dx = rand.nextInt(5) - 2;
+			int dy = rand.nextInt(5) - 2;
+			moveAnt(ant, dx, dy);
+		}
+
 		@Override
 		protected void paintComponent(Graphics g)
 		{
@@ -100,8 +155,8 @@ public class AntColony extends JFrame
 	private double theta = -Math.PI;
 	private Point center = new Point(AntPanel.WIDTH / 2, AntPanel.HEIGHT / 2);
 	private int radius = 100;
-	private int hookUpRadius = 10;
-	private int keepRadius = 5;
+	private int hookUpRadius = 20;
+	private int keepRadius = 10;
 
 	public void updateLoop()
 	{
@@ -123,20 +178,26 @@ public class AntColony extends JFrame
 			while (iter.hasNext())
 			{
 				Ant ant = iter.next();
+				antPanel.fluctuateAntPosition(ant, rand);
 				if (!ant.isLeader && !ant.isFollower)
 				{
-					if (calcDistance(ant, measureAnt) > hookUpRadius)
+					if (!antPanel.isVisible(ant, measureAnt, hookUpRadius))
 					{
-						int dx = rand.nextInt(5) - 2;
-						int dy = rand.nextInt(5) - 2;
-						antPanel.moveAnt(ant, dx, dy);
 						ant.color = Color.RED;
 					}
 					else
 					{
-						ant.color = Color.GREEN;
-						antPanel.followers.addLast(ant);
 						ant.isFollower = true;
+						ant.color = Color.GREEN;
+
+						if (!measureAnt.isLeader && measureAnt.left == null)
+						{
+							measureAnt.left = ant;
+						}
+						else
+						{
+							antPanel.followers.addLast(ant);							
+						}
 					}
 				}				
 			}
@@ -146,17 +207,11 @@ public class AntColony extends JFrame
 			while (iter.hasNext())
 			{
 				Ant follower = iter.next();
-				int x2 = follower.rect.x;
-				int y2 = follower.rect.y;
-				int x1 = measureAnt.rect.x;
-				int y1 = measureAnt.rect.y;
-				int distance = calcDistance(follower, measureAnt);
-			
-				if (distance > keepRadius)
+				antPanel.moveAntTowards(follower, measureAnt, keepRadius);
+				if (follower.left != null)
 				{
-					int dx = (int) (x1 - x2) * (distance - keepRadius)/distance;
-					int dy = (int) (y1 - y2) * (distance - keepRadius)/distance;
-					antPanel.moveAnt(follower, dx, dy);
+					antPanel.moveAntTowards(follower.left, measureAnt, keepRadius);
+					antPanel.separateAntsBy(follower.left, follower, keepRadius);
 				}
 				measureAnt = follower;
 			}
@@ -172,12 +227,7 @@ public class AntColony extends JFrame
 			}
 		}
 	}
-
-	private int calcDistance(Ant ant1, Ant ant2)
-	{
-		return (int) Math.sqrt((ant1.rect.x - ant2.rect.x) * (ant1.rect.x - ant2.rect.x) + (ant1.rect.y - ant2.rect.y) * (ant1.rect.y - ant2.rect.y));
-	}
-
+	
 	public void startAnimation()
 	{
 		Thread animationThread = new Thread(new Runnable()

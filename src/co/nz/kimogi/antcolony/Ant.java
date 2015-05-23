@@ -10,6 +10,7 @@ public class Ant
 	public Color color;
 	public boolean isLeader = false;
 	public boolean isFollower = false;
+	public Ant left = null;
 	
 	public Ant(int id, Rectangle rect, boolean isLeader)
 	{
