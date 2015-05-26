@@ -8,14 +8,12 @@ public class Ant
 	public int id;
 	public Rectangle rect;
 	public Color color;
-	public boolean isLeader = false;
-	public boolean isFollower = false;
-	public Ant left = null;
+	public boolean isBlocked = false;
 	
-	public Ant(int id, Rectangle rect, boolean isLeader)
+	public Ant(int id, Rectangle rect)
 	{
+		this.id = id;
 		this.rect = rect;
-		this.isLeader = isLeader;
 	}
 	
 	@Override

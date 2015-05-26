@@ -22,23 +22,22 @@ public class AntColony extends JFrame
 	{
 		private static final long serialVersionUID = -9027962180934835275L;
 		public final static int NUM_ANTS = 100;
-		public final static int WIDTH = 400;
-		public final static int HEIGHT = 400;
+		public final static int WIDTH = 500;
+		public final static int HEIGHT = 500;
 
 		private final static int SZ = 4;
 
 		public LinkedList<Ant> ants = new LinkedList<Ant>();
-		public LinkedList<Ant> followers = new LinkedList<Ant>();
 
 		public AntPanel()
 		{
 			Random rand = new Random();
-			ants.addLast(new Ant(0, new Rectangle(rand.nextInt(WIDTH), rand.nextInt(HEIGHT), SZ, SZ), true));
+			ants.addLast(new Ant(0, new Rectangle(rand.nextInt(WIDTH), rand.nextInt(HEIGHT), SZ, SZ)));
 			for (int i = 1; i < NUM_ANTS; i++)
 			{
-				ants.addLast(new Ant(i, new Rectangle(rand.nextInt(WIDTH), rand.nextInt(HEIGHT), SZ, SZ), false));
+				ants.addLast(new Ant(i, new Rectangle(rand.nextInt(WIDTH), rand.nextInt(HEIGHT), SZ, SZ)));
 			}
-
+			
 			setPreferredSize(new Dimension(WIDTH, HEIGHT));
 			setBackground(Color.WHITE);
 		}
@@ -118,7 +117,29 @@ public class AntColony extends JFrame
 				antPanel.moveAnt(ant, dx, dy);
 			}
 		}
-		
+
+		public synchronized void separateLeft(Ant ant, Ant target, Ant front, int space)
+		{
+			checkID(ant.id);
+			checkID(target.id);
+			checkID(front.id);
+			
+			int fx = front.rect.x;
+			int fy = front.rect.y;
+			int tx = target.rect.x;
+			int ty = target.rect.y;
+			
+			int dx = fx - tx;
+			int dy = fy - ty;
+			
+			double alpha = Math.atan((double)dy/(double)dx);
+			
+			int newx = tx - space * (int) Math.sin(Math.PI - Math.PI/2 + alpha);
+			int newy = ty - space * (int) Math.cos(Math.PI - Math.PI/2 + alpha);
+			
+			setAntLocation(ant, newx, newy);
+		}
+
 		public void fluctuateAntPosition(Ant ant, Random rand)
 		{
 			int dx = rand.nextInt(5) - 2;
@@ -145,76 +166,70 @@ public class AntColony extends JFrame
 	private AntPanel antPanel = new AntPanel();
 	boolean keepRunning = true;
 	private Random rand = new Random();
+	private NodeNetwork followers = new NodeNetwork(antPanel);
 
 	public AntColony()
 	{
 		getContentPane().add(antPanel);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		followers.nodes.add(new Node(antPanel.ants.getFirst()));
 	}
 
 	private double theta = -Math.PI;
 	private Point center = new Point(AntPanel.WIDTH / 2, AntPanel.HEIGHT / 2);
 	private int radius = 100;
-	private int hookUpRadius = 20;
-	private int keepRadius = 10;
+	private int hookUpRadius = 40;
+	private int keepRadius = 20;
 
 	public void updateLoop()
 	{
 		while (keepRunning)
 		{
 			Ant leader = antPanel.ants.getFirst();
-			theta = theta + Math.PI / 36;
+			theta = theta + Math.PI / 180;
 			if (theta > Math.PI)
 			{
 				theta = -Math.PI;
 			}
 			leader.rect.x = center.x + (int) (radius * Math.cos(theta));
 			leader.rect.y = center.y + (int) (radius * Math.sin(theta));
-			leader.color = Color.BLUE;
-
-			Ant measureAnt = antPanel.followers.isEmpty() ? leader : antPanel.followers.getLast();
 
 			Iterator<Ant> iter = antPanel.ants.iterator();
 			while (iter.hasNext())
 			{
 				Ant ant = iter.next();
-				antPanel.fluctuateAntPosition(ant, rand);
-				if (!ant.isLeader && !ant.isFollower)
+
+				if (!followers.contains(ant))
 				{
-					if (!antPanel.isVisible(ant, measureAnt, hookUpRadius))
+					followers.tryHookUpWithRange(ant, hookUpRadius, keepRadius);
+				}
+			}
+			
+			iter = antPanel.ants.iterator();
+			while (iter.hasNext())
+			{
+				Ant ant = iter.next();
+				
+				if (!followers.contains(ant))
+				{
+					antPanel.fluctuateAntPosition(ant, rand);
+					ant.color = Color.RED;
+				}
+				else
+				{
+					if (ant.isBlocked)
 					{
-						ant.color = Color.RED;
+						ant.color = Color.CYAN;
 					}
 					else
 					{
-						ant.isFollower = true;
 						ant.color = Color.GREEN;
-
-						if (!measureAnt.isLeader && measureAnt.left == null)
-						{
-							measureAnt.left = ant;
-						}
-						else
-						{
-							antPanel.followers.addLast(ant);							
-						}
 					}
-				}				
-			}
-
-			measureAnt = leader;
-			iter = antPanel.followers.iterator();
-			while (iter.hasNext())
-			{
-				Ant follower = iter.next();
-				antPanel.moveAntTowards(follower, measureAnt, keepRadius);
-				if (follower.left != null)
-				{
-					antPanel.moveAntTowards(follower.left, measureAnt, keepRadius);
-					antPanel.separateAntsBy(follower.left, follower, keepRadius);
 				}
-				measureAnt = follower;
 			}
+			leader.color = Color.BLUE;
+
+			followers.tryKeepForamtion(keepRadius);
 			antPanel.repaint();
 
 			try
