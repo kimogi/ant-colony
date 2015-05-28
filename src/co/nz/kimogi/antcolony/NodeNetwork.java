@@ -9,6 +9,7 @@ public class NodeNetwork
 {
 	public ArrayList<Node> nodes;
 	public AntPanel antPanel;
+	private static final int MAX_CHILDREN = 6;
 
 	public NodeNetwork(AntPanel panel)
 	{
@@ -65,14 +66,22 @@ public class NodeNetwork
 				Node newNode = new Node(ant);
 				newNode.first = nearest1;
 				newNode.second = nearest2;
+				if (nearest1.second == null)
+				{
+					nearest1.second = newNode;
+				}
+				if (nearest2.second == null)
+				{
+					nearest2.second = newNode;
+				}
 				nearest1.childen.add(newNode);
 				nearest2.childen.add(newNode);
 
-				if (nearest1.childen.size() == 2)
+				if (nearest1.childen.size() == MAX_CHILDREN)
 				{
 					nearest1.ant.isBlocked = true;
 				}
-				if (nearest2.childen.size() == 2)
+				if (nearest2.childen.size() == MAX_CHILDREN)
 				{
 					nearest2.ant.isBlocked = true;
 				}
@@ -88,13 +97,12 @@ public class NodeNetwork
 		else
 		{
 			Node nearest1 = null;
-
+			
 			Iterator<Node> iter = nodes.iterator();
 			while (iter.hasNext())
 			{
 				Node node = iter.next();
-				
-				if (node.first != null && node.childen.size() < 2)
+				if (!node.ant.isBlocked)
 				{
 					if (nearest1 == null)
 					{
@@ -122,7 +130,7 @@ public class NodeNetwork
 			{
 				Node node = iter.next();
 				
-				if (node.first != null && node.childen.size() < 2 && node.ant.id != nearest1.ant.id)
+				if (!node.ant.isBlocked && node.ant.id != nearest1.ant.id)
 				{
 					if (nearest2 == null)
 					{
@@ -151,14 +159,22 @@ public class NodeNetwork
 				Node newNode = new Node(ant);
 				newNode.first = nearest1;
 				newNode.second = nearest2;
+				if (nearest1.second == null)
+				{
+					nearest1.second = newNode;
+				}
+				if (nearest2.second == null)
+				{
+					nearest2.second = newNode;
+				}
 				nearest1.childen.add(newNode);
 				nearest2.childen.add(newNode);
 
-				if (nearest1.childen.size() == 2)
+				if (nearest1.childen.size() == MAX_CHILDREN)
 				{
 					nearest1.ant.isBlocked = true;
 				}
-				if (nearest2.childen.size() == 2)
+				if (nearest2.childen.size() == MAX_CHILDREN)
 				{
 					nearest2.ant.isBlocked = true;
 				}
@@ -183,29 +199,30 @@ public class NodeNetwork
 		}
 	}
 	
-/*	private void tryKeepForamtion(Node head, int separation)
-	{
-		adjustPosition(head, separation);
-		
-		for (Node node : head.childen)
-		{
-			tryKeepForamtion(node, separation);
-		}
-	}
-	*/
 	private void adjustPosition(Node node, int separation)
 	{
-		if (node.first != null && node.second == null)
+		if (node.first != null)
 		{
-			antPanel.moveAntTowards(node.ant, node.first.ant, separation);
+			if (!node.ant.isLeader)
+				antPanel.moveAntTowards(node.ant, node.first.ant, separation);
 			antPanel.separateAntsBy(node.ant, node.first.ant, separation);
 		}
-		else if (node.first != null && node.second != null)
+		if (node.second != null)
 		{
-			antPanel.moveAntTowards(node.ant, node.first.ant, separation);
-			antPanel.separateAntsBy(node.ant, node.first.ant, separation);
-			antPanel.moveAntTowards(node.ant, node.second.ant, separation);
+			if (!node.ant.isLeader)
+				antPanel.moveAntTowards(node.ant, node.second.ant, separation);
 			antPanel.separateAntsBy(node.ant, node.second.ant, separation);
+		}
+		for (Node child : node.childen)
+		{
+			antPanel.separateAntsBy(child.ant, node.ant, separation);
+			for (Node childchild : node.childen)
+			{
+				if (!childchild.equals(child))
+				{
+					antPanel.separateAntsBy(childchild.ant, child.ant, separation);
+				}
+			}
 		}
 	}
 }

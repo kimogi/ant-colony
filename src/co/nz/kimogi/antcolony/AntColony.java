@@ -32,10 +32,10 @@ public class AntColony extends JFrame
 		public AntPanel()
 		{
 			Random rand = new Random();
-			ants.addLast(new Ant(0, new Rectangle(rand.nextInt(WIDTH), rand.nextInt(HEIGHT), SZ, SZ)));
+			ants.addLast(new Ant(0, new Rectangle(rand.nextInt(WIDTH), rand.nextInt(HEIGHT), SZ, SZ), true));
 			for (int i = 1; i < NUM_ANTS; i++)
 			{
-				ants.addLast(new Ant(i, new Rectangle(rand.nextInt(WIDTH), rand.nextInt(HEIGHT), SZ, SZ)));
+				ants.addLast(new Ant(i, new Rectangle(rand.nextInt(WIDTH), rand.nextInt(HEIGHT), SZ, SZ), false));
 			}
 			
 			setPreferredSize(new Dimension(WIDTH, HEIGHT));
@@ -178,7 +178,7 @@ public class AntColony extends JFrame
 	private double theta = -Math.PI;
 	private Point center = new Point(AntPanel.WIDTH / 2, AntPanel.HEIGHT / 2);
 	private int radius = 100;
-	private int hookUpRadius = 40;
+	private int hookUpRadius = 30;
 	private int keepRadius = 20;
 
 	public void updateLoop()

@@ -9,11 +9,13 @@ public class Ant
 	public Rectangle rect;
 	public Color color;
 	public boolean isBlocked = false;
+	public boolean isLeader = false;
 	
-	public Ant(int id, Rectangle rect)
+	public Ant(int id, Rectangle rect, boolean isLeader)
 	{
 		this.id = id;
 		this.rect = rect;
+		this.isLeader = isLeader;
 	}
 	
 	@Override
