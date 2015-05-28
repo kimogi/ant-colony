@@ -259,9 +259,16 @@ public class AntColony extends JFrame
 	{
 		final AntColony antWindow = new AntColony();
 		antWindow.pack();
-		antWindow.setLocationByPlatform(true);
+		antWindow.setLocation(600, 100);
 		antWindow.setVisible(true);
-
+		try
+		{
+			Thread.sleep(10000);
+		}
+		catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}
 		antWindow.startAnimation();
 	}
 
