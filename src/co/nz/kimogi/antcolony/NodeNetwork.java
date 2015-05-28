@@ -31,7 +31,6 @@ public class NodeNetwork
 
 	public boolean tryHookUpWithRange(Ant ant, int range, int separation)
 	{
-		System.out.println(nodes.size());
 		if (nodes.size() > 15)
 		{
 			return false;

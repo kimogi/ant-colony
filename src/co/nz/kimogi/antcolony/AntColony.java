@@ -25,7 +25,7 @@ public class AntColony extends JFrame
 		public final static int WIDTH = 500;
 		public final static int HEIGHT = 500;
 
-		private final static int SZ = 4;
+		private final static int SZ = 2;
 
 		public LinkedList<Ant> ants = new LinkedList<Ant>();
 
@@ -146,19 +146,26 @@ public class AntColony extends JFrame
 			int dy = rand.nextInt(5) - 2;
 			moveAnt(ant, dx, dy);
 		}
-
+		
 		@Override
 		protected void paintComponent(Graphics g)
 		{
 			Graphics2D g2 = (Graphics2D) g;
 			g2.clearRect(0, 0, WIDTH, HEIGHT);
 
+			long millis = System.currentTimeMillis();
+			
 			Iterator<Ant> iter = ants.iterator();
 			while (iter.hasNext())
 			{
 				Ant ant = iter.next();
 				g2.setColor(ant.color);
 				g2.fill(ant.rect);
+				
+				if (followers.contains(ant))
+				{
+					System.out.println(millis + " : " + ant.id + " : x : " +  ant.rect.x + " y : " + ant.rect.y);
+				}
 			}
 		}
 	}
@@ -213,7 +220,7 @@ public class AntColony extends JFrame
 				if (!followers.contains(ant))
 				{
 					antPanel.fluctuateAntPosition(ant, rand);
-					ant.color = Color.RED;
+					ant.color = Color.LIGHT_GRAY;
 				}
 				else
 				{
@@ -261,14 +268,6 @@ public class AntColony extends JFrame
 		antWindow.pack();
 		antWindow.setLocation(600, 100);
 		antWindow.setVisible(true);
-		try
-		{
-			Thread.sleep(10000);
-		}
-		catch (InterruptedException e)
-		{
-			e.printStackTrace();
-		}
 		antWindow.startAnimation();
 	}
 
