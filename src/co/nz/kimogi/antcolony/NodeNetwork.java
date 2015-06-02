@@ -31,7 +31,7 @@ public class NodeNetwork
 
 	public boolean tryHookUpWithRange(Ant ant, int range, int separation)
 	{
-		if (nodes.size() > 15)
+		if (nodes.size() > 40)
 		{
 			return false;
 		}
@@ -65,22 +65,14 @@ public class NodeNetwork
 				Node newNode = new Node(ant);
 				newNode.first = nearest1;
 				newNode.second = nearest2;
-				if (nearest1.second == null)
-				{
-					nearest1.second = newNode;
-				}
-				if (nearest2.second == null)
-				{
-					nearest2.second = newNode;
-				}
 				nearest1.childen.add(newNode);
 				nearest2.childen.add(newNode);
 
-				if (nearest1.childen.size() == MAX_CHILDREN)
+				if (nearest1.childen.size() == MAX_CHILDREN - (nearest1.first != null ? 1 : 0) - (nearest1.second != null ? 1 : 0))
 				{
 					nearest1.ant.isBlocked = true;
 				}
-				if (nearest2.childen.size() == MAX_CHILDREN)
+				if (nearest2.childen.size() == MAX_CHILDREN - (nearest2.first != null ? 1 : 0) - (nearest2.second != null ? 1 : 0))
 				{
 					nearest2.ant.isBlocked = true;
 				}
@@ -158,22 +150,14 @@ public class NodeNetwork
 				Node newNode = new Node(ant);
 				newNode.first = nearest1;
 				newNode.second = nearest2;
-				if (nearest1.second == null)
-				{
-					nearest1.second = newNode;
-				}
-				if (nearest2.second == null)
-				{
-					nearest2.second = newNode;
-				}
 				nearest1.childen.add(newNode);
 				nearest2.childen.add(newNode);
 
-				if (nearest1.childen.size() == MAX_CHILDREN)
+				if (nearest1.childen.size() == MAX_CHILDREN - (nearest1.first != null ? 1 : 0) - (nearest1.second != null ? 1 : 0))
 				{
 					nearest1.ant.isBlocked = true;
 				}
-				if (nearest2.childen.size() == MAX_CHILDREN)
+				if (nearest2.childen.size() == MAX_CHILDREN - (nearest2.first != null ? 1 : 0) - (nearest2.second != null ? 1 : 0))
 				{
 					nearest2.ant.isBlocked = true;
 				}
@@ -195,33 +179,31 @@ public class NodeNetwork
 		{
 			Node node = iter.next();
 			adjustPosition(node, separation);
-		}
+		} 
 	}
-	
+
 	private void adjustPosition(Node node, int separation)
 	{
 		if (node.first != null)
 		{
 			if (!node.ant.isLeader)
+			{
 				antPanel.moveAntTowards(node.ant, node.first.ant, separation);
-			antPanel.separateAntsBy(node.ant, node.first.ant, separation);
+				antPanel.separateAntsBy(node.ant, node.first.ant, separation);
+			}
 		}
 		if (node.second != null)
 		{
 			if (!node.ant.isLeader)
+			{
 				antPanel.moveAntTowards(node.ant, node.second.ant, separation);
-			antPanel.separateAntsBy(node.ant, node.second.ant, separation);
+				antPanel.separateAntsBy(node.ant, node.second.ant, separation);
+			}
 		}
+		
 		for (Node child : node.childen)
 		{
-			antPanel.separateAntsBy(child.ant, node.ant, separation);
-			for (Node childchild : node.childen)
-			{
-				if (!childchild.equals(child))
-				{
-					antPanel.separateAntsBy(childchild.ant, child.ant, separation);
-				}
-			}
+			adjustPosition(child, separation);
 		}
 	}
 }

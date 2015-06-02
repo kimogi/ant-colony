@@ -36,4 +36,19 @@ public class Node implements Comparable<Node>
 			return node2.compareTo(node1);
 		}
 	};
+	
+	public boolean equals(Object obj) {
+		return ((Node)obj).ant.id == ant.id;
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return ant.id;
+	}
+	
+	public boolean isNeighbour(Node node)
+	{
+		return childen.contains(node) || (first != null && first.equals(node)) || (second != null && second.equals(node));
+	}
 }

@@ -25,7 +25,7 @@ public class AntColony extends JFrame
 		public final static int WIDTH = 500;
 		public final static int HEIGHT = 500;
 
-		private final static int SZ = 2;
+		private final static int SZ = 3;
 
 		public LinkedList<Ant> ants = new LinkedList<Ant>();
 
@@ -53,15 +53,7 @@ public class AntColony extends JFrame
 		public synchronized void setAntLocation(Ant ant, int x, int y)
 		{
 			checkID(ant.id);
-			if (x < 0)
-			{
-				x = (Math.abs(x) / WIDTH + 1) * WIDTH + x;
-			}
-			if (y < 0)
-			{
-				y = (Math.abs(y) / HEIGHT + 1) * HEIGHT + y;
-			}
-			ant.rect.setLocation(x % WIDTH, y % HEIGHT);
+			ant.rect.setLocation(x, y);
 		}
 
 		public synchronized void moveAnt(Ant ant, int dx, int dy)
@@ -110,36 +102,22 @@ public class AntColony extends JFrame
 			int y1 = target.rect.y;
 			int distance = calcDistance(ant, target);
 		
+			int dx = 0;
+			int dy = 0;
+			
 			if (distance != 0 && distance < space)
 			{
-				int dx = (int) (x1 - x2) * (distance - space)/distance;
-				int dy = (int) (y1 - y2) * (distance - space)/distance;
-				antPanel.moveAnt(ant, dx, dy);
+				dx = (int) (x1 - x2) * (distance - space) / distance;
+				dy = (int) (y1 - y2) * (distance - space) / distance;
+			} 
+			else if (distance == 0)
+			{
+				dx = (int)(space * Math.sin(Math.PI/6));
+				dy = (int)(space * Math.cos(Math.PI/6));
 			}
+			antPanel.moveAnt(ant, dx, dy);
 		}
-
-		public synchronized void separateLeft(Ant ant, Ant target, Ant front, int space)
-		{
-			checkID(ant.id);
-			checkID(target.id);
-			checkID(front.id);
-			
-			int fx = front.rect.x;
-			int fy = front.rect.y;
-			int tx = target.rect.x;
-			int ty = target.rect.y;
-			
-			int dx = fx - tx;
-			int dy = fy - ty;
-			
-			double alpha = Math.atan((double)dy/(double)dx);
-			
-			int newx = tx - space * (int) Math.sin(Math.PI - Math.PI/2 + alpha);
-			int newy = ty - space * (int) Math.cos(Math.PI - Math.PI/2 + alpha);
-			
-			setAntLocation(ant, newx, newy);
-		}
-
+		
 		public void fluctuateAntPosition(Ant ant, Random rand)
 		{
 			int dx = rand.nextInt(5) - 2;
@@ -153,19 +131,19 @@ public class AntColony extends JFrame
 			Graphics2D g2 = (Graphics2D) g;
 			g2.clearRect(0, 0, WIDTH, HEIGHT);
 
-			long millis = System.currentTimeMillis();
+			//long millis = System.currentTimeMillis();
 			
 			Iterator<Ant> iter = ants.iterator();
 			while (iter.hasNext())
 			{
 				Ant ant = iter.next();
 				g2.setColor(ant.color);
-				g2.fill(ant.rect);
+				g2.fill(new Rectangle((WIDTH + ant.rect.x) % WIDTH, (HEIGHT + ant.rect.y) % HEIGHT, ant.rect.width, ant.rect.height));
 				
-				if (followers.contains(ant))
-				{
-					System.out.println(millis + " : " + ant.id + " : x : " +  ant.rect.x + " y : " + ant.rect.y);
-				}
+			//	if (followers.contains(ant))
+			//	{
+			//		System.out.println(millis + " : " + ant.id + " : x : " +  ant.rect.x + " y : " + ant.rect.y);
+			//	}
 			}
 		}
 	}
@@ -188,12 +166,13 @@ public class AntColony extends JFrame
 	private int hookUpRadius = 30;
 	private int keepRadius = 20;
 
+	float i = 0;
 	public void updateLoop()
 	{
 		while (keepRunning)
 		{
 			Ant leader = antPanel.ants.getFirst();
-			theta = theta + Math.PI / 180;
+			theta = theta + Math.PI / 90;
 			if (theta > Math.PI)
 			{
 				theta = -Math.PI;
@@ -201,6 +180,8 @@ public class AntColony extends JFrame
 			leader.rect.x = center.x + (int) (radius * Math.cos(theta));
 			leader.rect.y = center.y + (int) (radius * Math.sin(theta));
 
+			//System.out.println("Center : " + center.x + " " + center.y);
+			
 			Iterator<Ant> iter = antPanel.ants.iterator();
 			while (iter.hasNext())
 			{
@@ -220,7 +201,7 @@ public class AntColony extends JFrame
 				if (!followers.contains(ant))
 				{
 					antPanel.fluctuateAntPosition(ant, rand);
-					ant.color = Color.LIGHT_GRAY;
+					ant.color = Color.GRAY;
 				}
 				else
 				{
@@ -247,7 +228,31 @@ public class AntColony extends JFrame
 			{
 				ex.printStackTrace();
 			}
+			
+			double allError = calculateError();
+			System.out.println(followers.nodes.size() + " " + allError);
 		}
+	}
+	
+	private double calculateError()
+	{
+		double antOverallError = 0;
+		long antOverallCount = 0;
+
+		for (Node nodeI : followers.nodes)
+		{
+			for (Node nodeJ : followers.nodes)
+			{
+				if (nodeI.isNeighbour(nodeJ))
+				{
+					double distance = antPanel.calcDistance(nodeI.ant, nodeJ.ant);
+					antOverallError += Math.sqrt(Math.abs(distance*distance - keepRadius*keepRadius));
+					antOverallCount++;
+				}
+			}
+		}
+		antOverallError = antOverallError / antOverallCount;
+		return antOverallError / keepRadius;
 	}
 	
 	public void startAnimation()
