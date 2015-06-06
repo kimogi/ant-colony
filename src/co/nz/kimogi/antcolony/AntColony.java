@@ -19,15 +19,16 @@ public class AntColony extends JFrame
 	private static final long serialVersionUID = -3079870385792199691L;
 	public static final Object lock = new Object();
 	public static int count = 0;
-	
+
 	public static class AntPanel extends JPanel
 	{
 		private static final long serialVersionUID = -9027962180934835275L;
 		public final static int NUM_ANTS = 100;
-		public final static int WIDTH = 500;
-		public final static int HEIGHT = 500;
-		private final static int SZ = 3;
-
+		public final static int LIMIT_ANTS = 10;
+		public final static int WIDTH = 700;
+		public final static int HEIGHT = 700;
+		private final static int SZ = 2;
+		
 		private static LinkedList<Ant> ants = new LinkedList<Ant>();
 
 		public AntPanel()
@@ -37,21 +38,21 @@ public class AntColony extends JFrame
 			{
 				ants.addLast(new Ant(i, new Rectangle(rand.nextInt(WIDTH), rand.nextInt(HEIGHT), SZ, SZ), rand));
 			}
-			
+
 			setPreferredSize(new Dimension(WIDTH, HEIGHT));
 			setBackground(Color.WHITE);
 		}
-		
-		public static void updateAnt(int id , Rectangle rect)
+
+		public static void updateAnt(int id, Rectangle rect)
 		{
 			synchronized (lock)
 			{
 				Ant ant = ants.get(id);
-				ant.rect = rect;				
+				ant.rect = rect;
 				ants.set(id, ant);
 			}
 		}
-		
+
 		public static void incrementCount()
 		{
 			synchronized (lock)
@@ -59,7 +60,7 @@ public class AntColony extends JFrame
 				count++;
 			}
 		}
-		
+
 		public static int getCount()
 		{
 			synchronized (lock)
@@ -67,23 +68,33 @@ public class AntColony extends JFrame
 				return count;
 			}
 		}
-		
-		public static ArrayList<Ant> getNearBy(Ant target, int radius)
+
+		public static ArrayList<Ant> getNearBy(Ant target, int radius, boolean includeLocked)
 		{
 			ArrayList<Ant> neighbours = new ArrayList<Ant>();
 			synchronized (lock)
 			{
 				for (Ant ant : ants)
 				{
-					if (target.distanceTo(ant) < radius && (ant.color == Color.BLUE || ant.color == Color.GREEN))
+					if (!ant.equals(target) && target.distanceTo(ant) < radius && ant.color != Color.GRAY)
 					{
-						neighbours.add(ant);
+						if (ant.color == Color.RED)
+						{
+							if (includeLocked)
+							{
+								neighbours.add(ant);
+							}
+						}
+						else
+						{
+							neighbours.add(ant);
+						}
 					}
 				}
 			}
 			return neighbours;
 		}
-		
+
 		@Override
 		protected void paintComponent(Graphics g)
 		{
@@ -97,6 +108,8 @@ public class AntColony extends JFrame
 				g2.setColor(ant.color);
 				Rectangle rect = new Rectangle((WIDTH + ant.rect.x) % WIDTH, (HEIGHT + ant.rect.y) % HEIGHT, ant.rect.width, ant.rect.height);
 				g2.fill(rect);
+				
+				g2.setColor(Color.BLACK);
 				if (ant.first != null)
 				{
 					Rectangle tRect = new Rectangle((WIDTH + ant.first.rect.x) % WIDTH, (HEIGHT + ant.first.rect.y) % HEIGHT, ant.first.rect.width, ant.first.rect.height);
@@ -124,35 +137,38 @@ public class AntColony extends JFrame
 		synchronized (lock)
 		{
 			antPanel.repaint();
+			System.out.println(AntPanel.getCount() + " " + calculateError());
 		}
 	}
 
-/*	private double calculateError()
+	private static double calculateError()
 	{
-		double antOverallError = 0;
-		long antOverallCount = 0;
+		double antMaxDeviation = 0;
 
-		for (Node nodeI : followers.nodes)
+		for (Ant ant : AntPanel.ants)
 		{
-			for (Node nodeJ : followers.nodes)
+			if (ant.color != Color.GRAY)
 			{
-				if (nodeI.isNeighbour(nodeJ))
+				ArrayList<Ant> nearAnts = AntPanel.getNearBy(ant, (int) (1.5 * Ant.KEEP_RADIUS), true);
+				System.out.println(nearAnts.size());
+				for (Ant antLink : nearAnts)
 				{
-					double distance = antPanel.calcDistance(nodeI.ant, nodeJ.ant);
-					antOverallError += Math.sqrt(Math.abs(distance*distance - keepRadius*keepRadius));
-					antOverallCount++;
+					int distance = ant.distanceTo(antLink);
+					if (Math.abs(distance - Ant.KEEP_RADIUS) > antMaxDeviation)
+					{
+						antMaxDeviation = Math.abs(distance - Ant.KEEP_RADIUS);
+					}
 				}
 			}
 		}
-		antOverallError = antOverallError / antOverallCount;
-		return antOverallError / keepRadius;
+		return antMaxDeviation / Ant.KEEP_RADIUS;
 	}
-	*/
+
 	public static void createAndShowGUI()
 	{
 		final AntColony antWindow = new AntColony();
 		antWindow.pack();
-		antWindow.setLocation(600, 100);
+		antWindow.setLocation(600, 0);
 		antWindow.setVisible(true);
 	}
 

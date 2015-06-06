@@ -10,10 +10,10 @@ import co.nz.kimogi.antcolony.AntColony.AntPanel;
 
 public class Ant
 {
-	private final static int HOOK_UP_RADIUS = 30;
-	private final static int KEEP_RADIUS = 20;
-	private static final int MAX_NEIGHBOUR_COUNT = 6;
-
+	public final static int HOOK_UP_RADIUS = 40;
+	public final static int KEEP_RADIUS = 30;
+	public static final int MAX_NEIGHBOUR_COUNT = 6;
+	
 	public int id;
 	public Rectangle rect;
 	public Color color;
@@ -58,8 +58,8 @@ public class Ant
 					}
 					else if (color == Color.GRAY)
 					{
-//						if (AntPanel.getCount() < 2)
-//						{
+						if (AntPanel.getCount() < AntPanel.LIMIT_ANTS)
+						{
 							if (tryHookUp())
 							{
 								adjustPosition();
@@ -69,21 +69,19 @@ public class Ant
 							{
 								fluctuatePosition();
 							}
-/*						}
+						}
 						else
 						{
 							fluctuatePosition();
 						}
-*/					}
+					}
 					else if (color == Color.GREEN || color == Color.RED)
 					{
 						adjustPosition();
 					}
 
 					AntPanel.updateAnt(Ant.this.id, Ant.this.rect);
-					
-					System.out.println("SIZE : " + AntPanel.getCount());
-					
+
 					try
 					{
 						Thread.sleep(100);
@@ -130,9 +128,9 @@ public class Ant
 			double targetDistance = KEEP_RADIUS;
 			double distance = first.distanceTo(second);
 			double scale = targetDistance / distance;
-			
-			perDx = (int) (Math.sin(Math.PI/3) * scale * parDy);
-			perDy = (int) (Math.sin(Math.PI/3) * scale * (-parDx));
+
+			perDx = (int) (Math.sin(Math.PI / 3) * scale * parDy);
+			perDy = (int) (Math.sin(Math.PI / 3) * scale * (-parDx));
 
 			tx = mx + perDx;
 			ty = my + perDy;
@@ -157,7 +155,7 @@ public class Ant
 
 	private boolean tryHookUp()
 	{
-		ArrayList<Ant> nearAnts = AntPanel.getNearBy(this, HOOK_UP_RADIUS);
+		ArrayList<Ant> nearAnts = AntPanel.getNearBy(this, HOOK_UP_RADIUS, false);
 
 		if (nearAnts.size() == 1 && nearAnts.get(0).color == Color.BLUE && nearAnts.get(0).children.size() == 0)
 		{
@@ -253,11 +251,23 @@ public class Ant
 		return false;
 	}
 
+	public boolean isNeighbour(Ant ant)
+	{
+		return ant.equals(first) || ant.equals(second) || children.contains(ant);
+	}
+
 	@Override
 	public boolean equals(Object obj)
 	{
-		Ant ant = (Ant) obj;
-		return id == ant.id;
+		if (obj == null)
+		{
+			return false;
+		}
+		else
+		{
+			Ant ant = (Ant) obj;
+			return id == ant.id;
+		}
 	}
 
 	@Override
