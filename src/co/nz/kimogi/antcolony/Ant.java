@@ -10,10 +10,10 @@ import co.nz.kimogi.antcolony.AntColony.AntPanel;
 
 public class Ant
 {
-	public final static int HOOK_UP_RADIUS = 40;
-	public final static int KEEP_RADIUS = 30;
+	public final static int HOOK_UP_RADIUS = 50;
+	public final static int KEEP_RADIUS = 40;
 	public static final int MAX_NEIGHBOUR_COUNT = 6;
-	
+
 	public int id;
 	public Rectangle rect;
 	public Color color;
@@ -40,7 +40,7 @@ public class Ant
 			{
 				double theta = -Math.PI;
 				Point center = new Point(AntPanel.WIDTH / 2, AntPanel.HEIGHT / 2);
-				int radius = 100;
+				int radius = 200;
 
 				while (true)
 				{
@@ -62,22 +62,22 @@ public class Ant
 						{
 							if (tryHookUp())
 							{
-								adjustPosition();
+								adjustPosition(true);
 								AntPanel.incrementCount();
 							}
 							else
 							{
-								fluctuatePosition();
+								fluctuatePositionWithAwareness();
 							}
 						}
 						else
 						{
-							fluctuatePosition();
+							fluctuatePositionWithAwareness();
 						}
 					}
 					else if (color == Color.GREEN || color == Color.RED)
 					{
-						adjustPosition();
+						adjustPosition(false);
 					}
 
 					AntPanel.updateAnt(Ant.this.id, Ant.this.rect);
@@ -99,7 +99,7 @@ public class Ant
 		this.process.start();
 	}
 
-	private void adjustPosition()
+	private void adjustPosition(boolean checkCollision)
 	{
 		if (first != null && second != null)
 		{
@@ -111,7 +111,7 @@ public class Ant
 				return;
 			}
 
-			int tx1 = 0, tx2 = 0, ty1 = 0, ty2 = 0, tx = 0, ty = 0, mx = 0, my = 0;
+			int tx1 = 0, tx2 = 0, ty1 = 0, ty2 = 0, mx = 0, my = 0;
 			int parDx = 0, parDy = 0, perDx = 0, perDy = 0;
 
 			tx1 = first.rect.x;
@@ -132,9 +132,33 @@ public class Ant
 			perDx = (int) (Math.sin(Math.PI / 3) * scale * parDy);
 			perDy = (int) (Math.sin(Math.PI / 3) * scale * (-parDx));
 
-			tx = mx + perDx;
-			ty = my + perDy;
+			int tx = 0;
+			int ty = 0;
+			
+			if (distanceTo(mx - perDx, my - perDy) < distanceTo(mx + perDx, my + perDy))
+			{
+				tx = mx - perDx;
+				ty = my - perDy;
+			}
+			else
+			{
+				tx = mx + perDx;
+				ty = my + perDy;
+			}
 
+			if (checkCollision)
+			{
+				ArrayList<Ant> neighbours = AntPanel.getNearBy(new Point(tx, ty), 0, HOOK_UP_RADIUS, true);
+				for (Ant neighbour : neighbours)
+				{
+					if (!neighbour.equals(this) && neighbour.distanceTo(tx, ty) < (int)(0.1 * KEEP_RADIUS))
+					{
+						tx = -tx;
+						ty = -ty;
+						break;
+					}
+				}
+			}
 			move(tx - rect.x, ty - rect.y);
 		}
 		else if (first != null && second == null)
@@ -155,7 +179,7 @@ public class Ant
 
 	private boolean tryHookUp()
 	{
-		ArrayList<Ant> nearAnts = AntPanel.getNearBy(this, HOOK_UP_RADIUS, false);
+		ArrayList<Ant> nearAnts = AntPanel.getNearBy(this, KEEP_RADIUS, HOOK_UP_RADIUS, false);
 
 		if (nearAnts.size() == 1 && nearAnts.get(0).color == Color.BLUE && nearAnts.get(0).children.size() == 0)
 		{
@@ -167,32 +191,48 @@ public class Ant
 		}
 		else
 		{
+			ArrayList<Pair<Ant, Ant>> samples = new ArrayList<Pair<Ant, Ant>>();
 			for (Ant target1 : nearAnts)
 			{
 				for (Ant target2 : nearAnts)
 				{
-					if (!target1.equals(target2) && isHookable(target1, target2))
+					Pair<Ant, Ant> pair = new Pair<Ant, Ant>(target1, target2);
+					if (!target1.equals(target2) && target1.distanceTo(target2) == KEEP_RADIUS && distanceTo(pair) >= KEEP_RADIUS)
 					{
-						first = target1;
-						second = target2;
-						color = Color.GREEN;
-						target1.children.add(this);
-						target2.children.add(this);
-
-						if (target1.children.size() == MAX_NEIGHBOUR_COUNT - (target1.first != null ? 1 : 0) - (target1.second != null ? 1 : 0))
-						{
-							target1.color = Color.RED;
-						}
-						if (target2.children.size() == MAX_NEIGHBOUR_COUNT - (target2.first != null ? 1 : 0) - (target2.second != null ? 1 : 0))
-						{
-							target2.color = Color.RED;
-						}
-						return true;
+						samples.add(pair);
 					}
 				}
 			}
+			if (samples.isEmpty())
+			{
+				return false;
+			}
+
+			Pair<Ant, Ant> nearest = getNearestPair(samples);
+			if (hasCommonChild(nearest))
+			{
+				return false;
+			}
+
+			Ant target1 = nearest.first;
+			Ant target2 = nearest.second;
+
+			first = target1;
+			second = target2;
+			color = Color.GREEN;
+			target1.children.add(this);
+			target2.children.add(this);
+
+			if (target1.children.size() == MAX_NEIGHBOUR_COUNT - (target1.first != null ? 1 : 0) - (target1.second != null ? 1 : 0))
+			{
+				target1.color = Color.RED;
+			}
+			if (target2.children.size() == MAX_NEIGHBOUR_COUNT - (target2.first != null ? 1 : 0) - (target2.second != null ? 1 : 0))
+			{
+				target2.color = Color.RED;
+			}
+			return true;
 		}
-		return false;
 	}
 
 	public void move(int dx, int dy)
@@ -201,10 +241,28 @@ public class Ant
 		rect.y += dy;
 	}
 
-	public void fluctuatePosition()
+	public void fluctuatePositionWithAwareness()
 	{
-		int dx = rand.nextInt(5) - 2;
-		int dy = rand.nextInt(5) - 2;
+		int rx = rand.nextInt(5) - 2;
+		int ry = rand.nextInt(5) - 2;
+		int outDx = 0;
+		int outDy = 0;
+		
+		ArrayList<Ant> nearBy = AntPanel.getNearBy(this, 0, KEEP_RADIUS, true);
+		if (!nearBy.isEmpty())
+		{
+			Ant nearest = getNearestAnt(nearBy);
+			int distance = distanceTo(nearest);
+			if (distance < KEEP_RADIUS)
+			{
+				double scale = (double)(HOOK_UP_RADIUS - distance) / (double)HOOK_UP_RADIUS;
+				outDx = (int)(scale * (rect.x - nearest.rect.x));
+				outDy = (int)(scale * (rect.y - nearest.rect.y));
+			}
+		}
+		int dx = rx + outDx;
+		int dy = ry + outDy;
+
 		move(dx, dy);
 	}
 
@@ -213,30 +271,83 @@ public class Ant
 		return (int) Math.sqrt((rect.x - ant.rect.x) * (rect.x - ant.rect.x) + (rect.y - ant.rect.y) * (rect.y - ant.rect.y));
 	}
 
-	public boolean isHookable(Ant target1, Ant target2)
+	public int distanceTo(int x, int y)
 	{
-		if (target1.distanceTo(target2) == KEEP_RADIUS)
+		return (int) Math.sqrt((rect.x - x) * (rect.x - x) + (rect.y - y) * (rect.y - y));
+	}
+
+	public int distanceTo(Pair<Ant, Ant> pair)
+	{
+		int tx1 = 0, tx2 = 0, ty1 = 0, ty2 = 0, mx = 0, my = 0;
+		int parDx = 0, parDy = 0;
+
+		tx1 = pair.first.rect.x;
+		tx2 = pair.second.rect.x;
+		ty1 = pair.first.rect.y;
+		ty2 = pair.second.rect.y;
+
+		parDx = (tx1 - tx2);
+		parDy = (ty1 - ty2);
+
+		mx = tx2 + (int) (0.5 * parDx);
+		my = ty2 + (int) (0.5 * parDy);
+
+		return distanceTo(mx, my);
+	}
+
+	public boolean hasCommonChild(Pair<Ant, Ant> pair)
+	{
+		Ant target1 = pair.first;
+		Ant target2 = pair.second;
+		for (Ant child : target1.children)
 		{
-			for (Ant child : target1.children)
+			if (isHooked(child, target1, target2))
 			{
-				if (isHooked(child, target1, target2))
-				{
-					return false;
-				}
+				return true;
 			}
-			for (Ant child : target2.children)
-			{
-				if (isHooked(child, target1, target2))
-				{
-					return false;
-				}
-			}
-			return true;
 		}
-		else
+		for (Ant child : target2.children)
 		{
-			return false;
+			if (isHooked(child, target1, target2))
+			{
+				return true;
+			}
 		}
+		return false;
+	}
+
+	private Pair<Ant, Ant> getNearestPair(ArrayList<Pair<Ant, Ant>> pairs)
+	{
+		Pair<Ant, Ant> nearest = null;
+		for (Pair<Ant, Ant> pair : pairs)
+		{
+			if (nearest == null)
+			{
+				nearest = pair;
+			}
+			else if (distanceTo(pair) < distanceTo(nearest))
+			{
+				nearest = pair;
+			}
+		}
+		return nearest;
+	}
+
+	private Ant getNearestAnt(ArrayList<Ant> ants)
+	{
+		Ant nearest = null;
+		for (Ant ant : ants)
+		{
+			if (nearest == null)
+			{
+				nearest = ant;
+			}
+			else if (distanceTo(ant) < distanceTo(nearest))
+			{
+				nearest = ant;
+			}
+		}
+		return nearest;
 	}
 
 	private boolean isHooked(Ant ant, Ant target1, Ant target2)
@@ -274,5 +385,17 @@ public class Ant
 	public int hashCode()
 	{
 		return id;
+	}
+
+	private class Pair<F, S>
+	{
+		public F first;
+		public S second;
+
+		public Pair(F f, S s)
+		{
+			first = f;
+			second = s;
+		}
 	}
 }

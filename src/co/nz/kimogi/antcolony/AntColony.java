@@ -4,8 +4,10 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Random;
@@ -24,7 +26,7 @@ public class AntColony extends JFrame
 	{
 		private static final long serialVersionUID = -9027962180934835275L;
 		public final static int NUM_ANTS = 100;
-		public final static int LIMIT_ANTS = 10;
+		public final static int LIMIT_ANTS = 20;
 		public final static int WIDTH = 700;
 		public final static int HEIGHT = 700;
 		private final static int SZ = 2;
@@ -69,14 +71,40 @@ public class AntColony extends JFrame
 			}
 		}
 
-		public static ArrayList<Ant> getNearBy(Ant target, int radius, boolean includeLocked)
+		public static ArrayList<Ant> getNearBy(Ant target, int smallRadius, int bigRadius, boolean includeLocked)
 		{
 			ArrayList<Ant> neighbours = new ArrayList<Ant>();
 			synchronized (lock)
 			{
 				for (Ant ant : ants)
 				{
-					if (!ant.equals(target) && target.distanceTo(ant) < radius && ant.color != Color.GRAY)
+					if (!ant.equals(target) && target.distanceTo(ant) < bigRadius && target.distanceTo(ant) > smallRadius && ant.color != Color.GRAY)
+					{
+						if (ant.color == Color.RED)
+						{
+							if (includeLocked)
+							{
+								neighbours.add(ant);
+							}
+						}
+						else
+						{
+							neighbours.add(ant);
+						}
+					}
+				}
+			}
+			return neighbours;
+		}
+
+		public static ArrayList<Ant> getNearBy(Point point, int smallRadius, int bigRadius, boolean includeLocked)
+		{
+			ArrayList<Ant> neighbours = new ArrayList<Ant>();
+			synchronized (lock)
+			{
+				for (Ant ant : ants)
+				{
+					if (ant.distanceTo(point.x, point.y) < bigRadius && ant.distanceTo(point.x, point.y) > smallRadius && ant.color != Color.GRAY)
 					{
 						if (ant.color == Color.RED)
 						{
@@ -125,7 +153,11 @@ public class AntColony extends JFrame
 	}
 
 	private static AntPanel antPanel = new AntPanel();
-
+	private static HashMap<Integer, Double> errors = new HashMap<Integer, Double>();
+	private static double currentErrorSampleCount = 0;
+	private static double currentErrorSum = 0;
+	private static int currentAntCount = 1;
+	
 	public AntColony()
 	{
 		getContentPane().add(antPanel);
@@ -137,7 +169,19 @@ public class AntColony extends JFrame
 		synchronized (lock)
 		{
 			antPanel.repaint();
-			System.out.println(AntPanel.getCount() + " " + calculateError());
+			if (currentAntCount != AntPanel.getCount())
+			{
+				System.out.println(AntPanel.getCount() + " " + currentErrorSum / currentErrorSampleCount);
+				errors.put(AntPanel.getCount(), currentErrorSum / currentErrorSampleCount);
+				currentErrorSampleCount = 0;
+				currentErrorSum = 0;
+			}
+			else
+			{
+				currentErrorSampleCount++;
+				currentErrorSum += calculateError();
+			}
+			currentAntCount = AntPanel.getCount();
 		}
 	}
 
@@ -149,8 +193,7 @@ public class AntColony extends JFrame
 		{
 			if (ant.color != Color.GRAY)
 			{
-				ArrayList<Ant> nearAnts = AntPanel.getNearBy(ant, (int) (1.5 * Ant.KEEP_RADIUS), true);
-				System.out.println(nearAnts.size());
+				ArrayList<Ant> nearAnts = AntPanel.getNearBy(ant, 0, (int) (1.5 * Ant.KEEP_RADIUS), true);
 				for (Ant antLink : nearAnts)
 				{
 					int distance = ant.distanceTo(antLink);
@@ -164,6 +207,31 @@ public class AntColony extends JFrame
 		return antMaxDeviation / Ant.KEEP_RADIUS;
 	}
 
+/*	private static void checkCommonChildren()
+	{
+		for (Ant anti : AntPanel.ants)
+		{
+			for (Ant antj : AntPanel.ants)
+			{
+				if (anti.color != Color.GRAY && antj.color != Color.GRAY && !anti.equals(antj))
+				{
+					int commonChildrenCount = 0;
+					for (Ant childi : anti.children)
+					{
+						if (antj.children.contains(childi))
+						{
+							commonChildrenCount++;
+						}
+					}
+					if (commonChildrenCount > 2)
+					{
+						throw new IllegalStateException("Algorithmic error");
+					} 
+				}
+			}
+		}
+	}
+*/
 	public static void createAndShowGUI()
 	{
 		final AntColony antWindow = new AntColony();
