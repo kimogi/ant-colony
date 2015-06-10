@@ -25,10 +25,10 @@ public class AntColony extends JFrame
 	public static class AntPanel extends JPanel
 	{
 		private static final long serialVersionUID = -9027962180934835275L;
-		public final static int NUM_ANTS = 100;
-		public final static int LIMIT_ANTS = 20;
-		public final static int WIDTH = 700;
-		public final static int HEIGHT = 700;
+		public final static int NUM_ANTS = 200;
+		public final static int LIMIT_ANTS = 10;
+		public final static int WIDTH = 800;
+		public final static int HEIGHT = 800;
 		private final static int SZ = 2;
 		
 		private static LinkedList<Ant> ants = new LinkedList<Ant>();
@@ -133,9 +133,7 @@ public class AntColony extends JFrame
 			while (iter.hasNext())
 			{
 				Ant ant = iter.next();
-				g2.setColor(ant.color);
 				Rectangle rect = new Rectangle((WIDTH + ant.rect.x) % WIDTH, (HEIGHT + ant.rect.y) % HEIGHT, ant.rect.width, ant.rect.height);
-				g2.fill(rect);
 				
 				g2.setColor(Color.BLACK);
 				if (ant.first != null)
@@ -149,14 +147,27 @@ public class AntColony extends JFrame
 					g2.drawLine(rect.x, rect.y, tRect.x, tRect.y);
 				}
 			}
+			
+			iter = ants.iterator();
+			while (iter.hasNext())
+			{
+				Ant ant = iter.next();
+				Rectangle rect = new Rectangle((WIDTH + ant.rect.x) % WIDTH, (HEIGHT + ant.rect.y) % HEIGHT, ant.rect.width, ant.rect.height);
+				g2.setColor(ant.color);
+				g2.fill(rect);
+			}
 		}
 	}
 
 	private static AntPanel antPanel = new AntPanel();
-	private static HashMap<Integer, Double> errors = new HashMap<Integer, Double>();
+	private static HashMap<Integer, Double> antErrors = new HashMap<Integer, Double>();
+	private static HashMap<Double, Double> speedErrors = new HashMap<Double, Double>();
 	private static double currentErrorSampleCount = 0;
 	private static double currentErrorSum = 0;
 	private static int currentAntCount = 1;
+	private static double currentAntSpeed = Ant.deltaTheta;
+	private static double currentAntTheta = Ant.theta;
+	
 	
 	public AntColony()
 	{
@@ -169,23 +180,63 @@ public class AntColony extends JFrame
 		synchronized (lock)
 		{
 			antPanel.repaint();
-			if (currentAntCount != AntPanel.getCount())
-			{
-				System.out.println(AntPanel.getCount() + " " + currentErrorSum / currentErrorSampleCount);
-				errors.put(AntPanel.getCount(), currentErrorSum / currentErrorSampleCount);
-				currentErrorSampleCount = 0;
-				currentErrorSum = 0;
-			}
-			else
-			{
-				currentErrorSampleCount++;
-				currentErrorSum += calculateError();
-			}
-			currentAntCount = AntPanel.getCount();
+			//updateNumError();
+			//updateSpeedError();
+			updateDirError();
 		}
 	}
 
-	private static double calculateError()
+	private static void updateDirError()
+	{
+//		if (Math.abs(currentAntTheta - Ant.theta) > Math.PI/90)
+//		{
+			System.out.println(String.format("%.4f %.4f", Ant.theta, calculateMaxDeviationError()));
+//			currentErrorSampleCount = 0;
+//			currentErrorSum = 0;
+//		}
+//		else
+//		{
+//			currentErrorSampleCount++;
+//			currentErrorSum += calculateError();
+//		}
+//		currentAntTheta = Ant.theta;
+	}
+
+	private static void updateSpeedError()
+	{
+		if (currentAntSpeed != Ant.deltaTheta)
+		{
+			System.out.println(Ant.deltaTheta + " " + currentErrorSum / currentErrorSampleCount);
+			speedErrors.put(Ant.deltaTheta, currentErrorSum / currentErrorSampleCount);
+			currentErrorSampleCount = 0;
+			currentErrorSum = 0;
+		}
+		else
+		{
+			currentErrorSampleCount++;
+			currentErrorSum += calculateMaxDeviationError();
+		}
+		currentAntSpeed = Ant.deltaTheta;		
+	}
+
+	private static void updateNumError()
+	{
+		if (currentAntCount != AntPanel.getCount())
+		{
+			System.out.println(AntPanel.getCount() + " " + currentErrorSum / currentErrorSampleCount);
+			antErrors.put(AntPanel.getCount(), currentErrorSum / currentErrorSampleCount);
+			currentErrorSampleCount = 0;
+			currentErrorSum = 0;
+		}
+		else
+		{
+			currentErrorSampleCount++;
+			currentErrorSum += calculateMaxDeviationError();
+		}
+		currentAntCount = AntPanel.getCount();		
+	}
+	
+	private static double calculateMaxDeviationError()
 	{
 		double antMaxDeviation = 0;
 
@@ -204,34 +255,9 @@ public class AntColony extends JFrame
 				}
 			}
 		}
-		return antMaxDeviation / Ant.KEEP_RADIUS;
+		return antMaxDeviation / (double)Ant.KEEP_RADIUS;
 	}
 
-/*	private static void checkCommonChildren()
-	{
-		for (Ant anti : AntPanel.ants)
-		{
-			for (Ant antj : AntPanel.ants)
-			{
-				if (anti.color != Color.GRAY && antj.color != Color.GRAY && !anti.equals(antj))
-				{
-					int commonChildrenCount = 0;
-					for (Ant childi : anti.children)
-					{
-						if (antj.children.contains(childi))
-						{
-							commonChildrenCount++;
-						}
-					}
-					if (commonChildrenCount > 2)
-					{
-						throw new IllegalStateException("Algorithmic error");
-					} 
-				}
-			}
-		}
-	}
-*/
 	public static void createAndShowGUI()
 	{
 		final AntColony antWindow = new AntColony();

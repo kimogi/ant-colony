@@ -10,20 +10,23 @@ import co.nz.kimogi.antcolony.AntColony.AntPanel;
 
 public class Ant
 {
-	public final static int HOOK_UP_RADIUS = 50;
-	public final static int KEEP_RADIUS = 40;
+	public final static int HOOK_UP_RADIUS = 70;
+	public final static int KEEP_RADIUS = 50;
 	public static final int MAX_NEIGHBOUR_COUNT = 6;
-
+		
 	public int id;
 	public Rectangle rect;
 	public Color color;
 	public Thread process = null;
 	public Runnable runnable = null;
 	public Random rand;
-
+	
 	public Ant first = null;
 	public Ant second = null;
 	public ArrayList<Ant> children;
+	public static double deltaTheta = Math.PI/180;
+	public static int radius = 250;
+	public static double theta = 0;
 
 	public Ant(int id, Rectangle rect, Random rand)
 	{
@@ -38,22 +41,26 @@ public class Ant
 			@Override
 			public void run()
 			{
-				double theta = -Math.PI;
+				theta = -Math.PI;
 				Point center = new Point(AntPanel.WIDTH / 2, AntPanel.HEIGHT / 2);
-				int radius = 200;
 
 				while (true)
 				{
 					if (Ant.this.id == 0)
 					{
-						theta = theta + Math.PI / 180;
+						theta = theta + deltaTheta;
 						if (theta > Math.PI)
 						{
 							theta = -Math.PI;
-						}
+							
+/*							if (AntPanel.getCount() == AntPanel.LIMIT_ANTS)
+							{
+								deltaTheta = deltaTheta +  Math.PI/3000;
+							}
+*/						}
 
-						Ant.this.rect.x = center.x + (int) (radius * Math.cos(theta));
-						Ant.this.rect.y = center.y + (int) (radius * Math.sin(theta));
+						Ant.this.rect.x = center.x + (int) (Math.abs(radius * Math.cos(theta)));
+						Ant.this.rect.y = center.y + (int) (Math.abs(radius * Math.sin(theta)));
 						color = children.size() < MAX_NEIGHBOUR_COUNT ? Color.BLUE : Color.RED;
 					}
 					else if (color == Color.GRAY)
@@ -84,7 +91,7 @@ public class Ant
 
 					try
 					{
-						Thread.sleep(100);
+						Thread.sleep(30);
 					}
 					catch (InterruptedException e)
 					{
