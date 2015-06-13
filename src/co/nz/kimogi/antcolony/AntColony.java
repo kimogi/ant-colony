@@ -6,8 +6,8 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.geom.Ellipse2D;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Random;
@@ -19,35 +19,47 @@ import javax.swing.SwingUtilities;
 public class AntColony extends JFrame
 {
 	private static final long serialVersionUID = -3079870385792199691L;
-	public static final Object lock = new Object();
 	public static int count = 0;
 
 	public static class AntPanel extends JPanel
 	{
 		private static final long serialVersionUID = -9027962180934835275L;
-		public final static int NUM_ANTS = 200;
-		public final static int LIMIT_ANTS = 10;
-		public final static int WIDTH = 800;
-		public final static int HEIGHT = 800;
+		public final static int NUM_ANTS = 100;
+		public final static int WIDTH = 500;
+		public final static int HEIGHT = 500;
 		private final static int SZ = 2;
-		
-		private static LinkedList<Ant> ants = new LinkedList<Ant>();
+
+		public static final Object antsLock = new Object();
+		public static LinkedList<Ant> ants = new LinkedList<Ant>();
 
 		public AntPanel()
 		{
 			Random rand = new Random();
-			for (int i = 0; i < NUM_ANTS; i++)
+			synchronized (antsLock)
 			{
-				ants.addLast(new Ant(i, new Rectangle(rand.nextInt(WIDTH), rand.nextInt(HEIGHT), SZ, SZ), rand));
+				for (int i = 0; i < NUM_ANTS; i++)
+				{
+					ants.addLast(new Ant(i, new Rectangle(rand.nextInt(WIDTH), rand.nextInt(HEIGHT), SZ, SZ), rand));
+				}
 			}
 
 			setPreferredSize(new Dimension(WIDTH, HEIGHT));
 			setBackground(Color.WHITE);
 		}
-
+		
+		public static ArrayList<Ant> getAntsCopy()
+		{
+			ArrayList<Ant> antsCopy = new ArrayList<Ant>();
+			synchronized (antsLock)
+			{
+				antsCopy.addAll(ants);
+			}
+			return antsCopy;
+		}
+				
 		public static void updateAnt(int id, Rectangle rect)
 		{
-			synchronized (lock)
+			synchronized (antsLock)
 			{
 				Ant ant = ants.get(id);
 				ant.rect = rect;
@@ -57,7 +69,7 @@ public class AntColony extends JFrame
 
 		public static void incrementCount()
 		{
-			synchronized (lock)
+			synchronized (antsLock)
 			{
 				count++;
 			}
@@ -65,7 +77,7 @@ public class AntColony extends JFrame
 
 		public static int getCount()
 		{
-			synchronized (lock)
+			synchronized (antsLock)
 			{
 				return count;
 			}
@@ -74,7 +86,7 @@ public class AntColony extends JFrame
 		public static ArrayList<Ant> getNearBy(Ant target, int smallRadius, int bigRadius, boolean includeLocked)
 		{
 			ArrayList<Ant> neighbours = new ArrayList<Ant>();
-			synchronized (lock)
+			synchronized (antsLock)
 			{
 				for (Ant ant : ants)
 				{
@@ -100,7 +112,7 @@ public class AntColony extends JFrame
 		public static ArrayList<Ant> getNearBy(Point point, int smallRadius, int bigRadius, boolean includeLocked)
 		{
 			ArrayList<Ant> neighbours = new ArrayList<Ant>();
-			synchronized (lock)
+			synchronized (antsLock)
 			{
 				for (Ant ant : ants)
 				{
@@ -129,45 +141,24 @@ public class AntColony extends JFrame
 			Graphics2D g2 = (Graphics2D) g;
 			g2.clearRect(0, 0, WIDTH, HEIGHT);
 
-			Iterator<Ant> iter = ants.iterator();
+			Iterator<Ant> iter = AntPanel.getAntsCopy().iterator();
 			while (iter.hasNext())
 			{
 				Ant ant = iter.next();
-				Rectangle rect = new Rectangle((WIDTH + ant.rect.x) % WIDTH, (HEIGHT + ant.rect.y) % HEIGHT, ant.rect.width, ant.rect.height);
-				
-				g2.setColor(Color.BLACK);
-				if (ant.first != null)
-				{
-					Rectangle tRect = new Rectangle((WIDTH + ant.first.rect.x) % WIDTH, (HEIGHT + ant.first.rect.y) % HEIGHT, ant.first.rect.width, ant.first.rect.height);
-					g2.drawLine(rect.x, rect.y, tRect.x, tRect.y);
-				}
-				if (ant.second != null)
-				{
-					Rectangle tRect = new Rectangle((WIDTH + ant.second.rect.x) % WIDTH, (HEIGHT + ant.second.rect.y) % HEIGHT, ant.second.rect.width, ant.second.rect.height);
-					g2.drawLine(rect.x, rect.y, tRect.x, tRect.y);
-				}
-			}
-			
-			iter = ants.iterator();
-			while (iter.hasNext())
-			{
-				Ant ant = iter.next();
-				Rectangle rect = new Rectangle((WIDTH + ant.rect.x) % WIDTH, (HEIGHT + ant.rect.y) % HEIGHT, ant.rect.width, ant.rect.height);
 				g2.setColor(ant.color);
-				g2.fill(rect);
+
+				g2.draw(new Ellipse2D.Double(ant.rect.x - Ant.Re/2, ant.rect.y - Ant.Re/2, Ant.Re, Ant.Re));
+				g2.fill(ant.rect);
 			}
 		}
 	}
 
 	private static AntPanel antPanel = new AntPanel();
-	private static HashMap<Integer, Double> antErrors = new HashMap<Integer, Double>();
-	private static HashMap<Double, Double> speedErrors = new HashMap<Double, Double>();
 	private static double currentErrorSampleCount = 0;
 	private static double currentErrorSum = 0;
 	private static int currentAntCount = 1;
-	private static double currentAntSpeed = Ant.deltaTheta;
-	private static double currentAntTheta = Ant.theta;
-	
+	private static double currentAntSpeed = Ant.THETA;
+	private static long currentAntTime = Ant.time;
 	
 	public AntColony()
 	{
@@ -177,37 +168,32 @@ public class AntColony extends JFrame
 
 	public static void updateView()
 	{
-		synchronized (lock)
+		antPanel.repaint();
+	}
+
+	@SuppressWarnings("unused")
+	private static void updateTimeTriggeredError()
+	{
+		if (Math.abs(currentAntTime - Ant.time) > 10)
 		{
-			antPanel.repaint();
-			//updateNumError();
-			//updateSpeedError();
-			updateDirError();
+			System.out.println(String.format("%d %.4f", Ant.time, calculateMaxDeviationError()));
+			currentErrorSampleCount = 0;
+			currentErrorSum = 0;
+			currentAntTime = Ant.time;
+		}
+		else
+		{
+			currentErrorSampleCount++;
+			currentErrorSum += calculateMaxDeviationError();
 		}
 	}
 
-	private static void updateDirError()
+	@SuppressWarnings("unused")
+	private static void updateSpeedTriggeredError()
 	{
-//		if (Math.abs(currentAntTheta - Ant.theta) > Math.PI/90)
-//		{
-			System.out.println(String.format("%.4f %.4f", Ant.theta, calculateMaxDeviationError()));
-//			currentErrorSampleCount = 0;
-//			currentErrorSum = 0;
-//		}
-//		else
-//		{
-//			currentErrorSampleCount++;
-//			currentErrorSum += calculateError();
-//		}
-//		currentAntTheta = Ant.theta;
-	}
-
-	private static void updateSpeedError()
-	{
-		if (currentAntSpeed != Ant.deltaTheta)
+		if (currentAntSpeed != Ant.D_THETA)
 		{
-			System.out.println(Ant.deltaTheta + " " + currentErrorSum / currentErrorSampleCount);
-			speedErrors.put(Ant.deltaTheta, currentErrorSum / currentErrorSampleCount);
+			System.out.println(Ant.D_THETA + " " + currentErrorSum / currentErrorSampleCount);
 			currentErrorSampleCount = 0;
 			currentErrorSum = 0;
 		}
@@ -216,15 +202,15 @@ public class AntColony extends JFrame
 			currentErrorSampleCount++;
 			currentErrorSum += calculateMaxDeviationError();
 		}
-		currentAntSpeed = Ant.deltaTheta;		
+		currentAntSpeed = Ant.D_THETA;		
 	}
 
-	private static void updateNumError()
+	@SuppressWarnings("unused")
+	private static void updateNumTriggeredError()
 	{
 		if (currentAntCount != AntPanel.getCount())
 		{
 			System.out.println(AntPanel.getCount() + " " + currentErrorSum / currentErrorSampleCount);
-			antErrors.put(AntPanel.getCount(), currentErrorSum / currentErrorSampleCount);
 			currentErrorSampleCount = 0;
 			currentErrorSum = 0;
 		}
@@ -240,7 +226,7 @@ public class AntColony extends JFrame
 	{
 		double antMaxDeviation = 0;
 
-		for (Ant ant : AntPanel.ants)
+		for (Ant ant : AntPanel.getAntsCopy())
 		{
 			if (ant.color != Color.GRAY)
 			{
