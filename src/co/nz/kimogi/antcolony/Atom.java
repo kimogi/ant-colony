@@ -6,11 +6,10 @@ import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.Random;
 
-import co.nz.kimogi.antcolony.AntColony.AntPanel;
+import co.nz.kimogi.antcolony.Main.AtomPanel;
 
-public class Ant
+public class Atom
 {
-	public final static int KEEP_RADIUS = 40;
 	public static int SQUARE_SIDE = 0;
 	public static final int STEP = 2;
 	public static double D_THETA = Math.PI / 180;
@@ -41,7 +40,7 @@ public class Ant
 
 	public static long time = 0;
 
-	public Ant(int id, Rectangle rectangle, Random rand)
+	public Atom(int id, Rectangle rectangle, Random rand)
 	{
 		this.id = id;
 		this.rect = rectangle;
@@ -58,11 +57,12 @@ public class Ant
 				{
 					TEMP_K += D_TEMP_K;
 					System.out.println("Temp : " + TEMP_K);
+					
 					prevrect.x = rect.x;
 					prevrect.y = rect.y;
 
 					fluctuatePositionByMorse();
-					AntPanel.updateAnt(Ant.this.id, Ant.this.rect);
+					AtomPanel.updateAnt(Atom.this.id, Atom.this.rect);
 
 					try
 					{
@@ -72,7 +72,7 @@ public class Ant
 					{
 						e.printStackTrace();
 					}
-					AntColony.updateView();
+					Main.updateView();
 				}
 			}
 		};
@@ -110,7 +110,7 @@ public class Ant
 		return new DoublePoint(vx, vy);
 	}
 
-	private DoublePoint morseVelocityTo(Ant ant)
+	private DoublePoint morseVelocityTo(Atom ant)
 	{
 		int distance = distanceTo(ant);
 		double vx = 0.0;
@@ -135,7 +135,7 @@ public class Ant
 		double vx = termV.x;
 		double vy = termV.y;
 
-		for (Ant ant : AntPanel.getAntsCopy())
+		for (Atom ant : AtomPanel.getAtomsCopy())
 		{
 			if (ant.id != this.id)
 			{
@@ -165,21 +165,21 @@ public class Ant
 		int x = this.rect.x;
 		int y = this.rect.y;
 
-		int dGradX = (x - prevX) * KEEP_RADIUS / 4;
-		int dGradY = (y - prevY) * KEEP_RADIUS / 4;
+		int dGradX = (int)((x - prevX) * Re / 4.0);
+		int dGradY = (int)((y - prevY) * Re / 4.0);
 		return new Point(dGradX, dGradY);
 	}
 
 	@SuppressWarnings("unused")
-	private boolean isAlongWithGradOf(Ant target)
+	private boolean isAlongWithGradOf(Atom target)
 	{
 		int prevX = target.prevrect.x;
 		int prevY = target.prevrect.y;
 		int x = target.rect.x;
 		int y = target.rect.y;
 
-		int gradX = (x - prevX) * KEEP_RADIUS;
-		int gradY = (y - prevY) * KEEP_RADIUS;
+		int gradX = (int)((x - prevX) * Re);
+		int gradY = (int)((y - prevY) * Re);
 
 		int gradPerFirstX = (int) (Math.sin(Math.PI / 3) * gradY);
 		int gradPerFirstY = (int) (Math.sin(Math.PI / 3) * gradX);
@@ -212,15 +212,15 @@ public class Ant
 	@SuppressWarnings("unused")
 	private void moveLeaderInSquare()
 	{
-		int x = Ant.this.rect.x;
-		int y = Ant.this.rect.y;
+		int x = Atom.this.rect.x;
+		int y = Atom.this.rect.y;
 
 		if (SQUARE_SIDE == 0)
 		{
 			if (x < 600)
 			{
-				Ant.this.rect.x = x + STEP;
-				Ant.this.rect.y = 200;
+				Atom.this.rect.x = x + STEP;
+				Atom.this.rect.y = 200;
 			}
 			else
 			{
@@ -231,8 +231,8 @@ public class Ant
 		{
 			if (y < 600)
 			{
-				Ant.this.rect.x = 600;
-				Ant.this.rect.y = y + STEP;
+				Atom.this.rect.x = 600;
+				Atom.this.rect.y = y + STEP;
 			}
 			else
 			{
@@ -243,8 +243,8 @@ public class Ant
 		{
 			if (x > 200)
 			{
-				Ant.this.rect.x = x - STEP;
-				Ant.this.rect.y = 600;
+				Atom.this.rect.x = x - STEP;
+				Atom.this.rect.y = 600;
 			}
 			else
 			{
@@ -255,8 +255,8 @@ public class Ant
 		{
 			if (y > 200)
 			{
-				Ant.this.rect.x = 200;
-				Ant.this.rect.y = y - STEP;
+				Atom.this.rect.x = 200;
+				Atom.this.rect.y = y - STEP;
 			}
 			else
 			{
@@ -268,26 +268,26 @@ public class Ant
 	@SuppressWarnings("unused")
 	private void moveLeaderInCircle()
 	{
-		Point center = new Point(AntPanel.WIDTH / 2, AntPanel.HEIGHT / 2);
+		Point center = new Point(AtomPanel.WIDTH / 2, AtomPanel.HEIGHT / 2);
 		THETA += D_THETA;
 		if (THETA > Math.PI)
 		{
 			THETA = -Math.PI;
 		}
 
-		Ant.this.rect.x = center.x + (int) (RADIUS * Math.cos(THETA));
-		Ant.this.rect.y = center.y + (int) (RADIUS * Math.sin(THETA));
+		Atom.this.rect.x = center.x + (int) (RADIUS * Math.cos(THETA));
+		Atom.this.rect.y = center.y + (int) (RADIUS * Math.sin(THETA));
 	}
 
 	public void move(int dx, int dy)
 	{
-		rect.x = (rect.x - dx) % AntPanel.WIDTH; 
-		rect.y = (rect.y - dy) % AntPanel.HEIGHT;
+		rect.x = (rect.x - dx) % AtomPanel.WIDTH; 
+		rect.y = (rect.y - dy) % AtomPanel.HEIGHT;
 	}
 
-	public int distanceTo(Ant ant)
+	public int distanceTo(Atom atom)
 	{
-		return (int) Math.sqrt((rect.x - ant.rect.x) * (rect.x - ant.rect.x) + (rect.y - ant.rect.y) * (rect.y - ant.rect.y));
+		return (int) Math.sqrt((rect.x - atom.rect.x) * (rect.x - atom.rect.x) + (rect.y - atom.rect.y) * (rect.y - atom.rect.y));
 	}
 
 	public int distanceTo(int x, int y)
@@ -296,18 +296,18 @@ public class Ant
 	}
 
 	@SuppressWarnings("unused")
-	private Ant getNearestAnt(ArrayList<Ant> ants)
+	private Atom getNearestAnt(ArrayList<Atom> atoms)
 	{
-		Ant nearest = null;
-		for (Ant ant : ants)
+		Atom nearest = null;
+		for (Atom atom : atoms)
 		{
 			if (nearest == null)
 			{
-				nearest = ant;
+				nearest = atom;
 			}
-			else if (distanceTo(ant) < distanceTo(nearest))
+			else if (distanceTo(atom) < distanceTo(nearest))
 			{
-				nearest = ant;
+				nearest = atom;
 			}
 		}
 		return nearest;
@@ -322,8 +322,8 @@ public class Ant
 		}
 		else
 		{
-			Ant ant = (Ant) obj;
-			return id == ant.id;
+			Atom atom = (Atom) obj;
+			return id == atom.id;
 		}
 	}
 
