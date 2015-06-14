@@ -12,21 +12,19 @@ public class Atom
 {
 	public static int SQUARE_SIDE = 0;
 	public static final int STEP = 2;
-	public static double D_THETA = Math.PI / 180;
-	public static int RADIUS = 250;
-	public static double THETA = -Math.PI;
 
-	private static final double De = 100.0;
+	private static final double De = 200.0;
 	private static final double SCALE = 1.0;
 	public static final double Re = 30.0;
-	private static final double RANGE_OF_INTEREST = 80.0;
+	private static final double RANGE_OF_INTEREST = 2*Re;
 	private static final double E_EPSILON = 1.0;
-	private static final double A = 0.08;
+	private static final double Ke = 10.0;
+	private static final double A = Math.sqrt(Ke / (2.0*De));
 	private static final double DT = 1.0;
-	private static final double M = 500.0;
+	private static final double M = 1000.0;
 	private static final double Nu = 0.1;
 
-	private static double TEMP_K = 293;
+	private static double TEMP_K = 500;
 	private static final double D_TEMP_K =  0.0;
 	private static final double CONSTANT_R = 8.31;
 
@@ -56,7 +54,7 @@ public class Atom
 				while (true)
 				{
 					TEMP_K += D_TEMP_K;
-					System.out.println("Temp : " + TEMP_K);
+				//	System.out.println("Temp : " + TEMP_K);
 					
 					prevrect.x = rect.x;
 					prevrect.y = rect.y;
@@ -145,6 +143,10 @@ public class Atom
 			}
 		}
 
+		DoublePoint externalFieldVelocity = AtomPanel.externalCirculatingFieldVelocity(this);
+		vx += externalFieldVelocity.x;
+		vy += externalFieldVelocity.y;
+		
 		return new DoublePoint(vx, vy);
 	}
 
@@ -210,7 +212,7 @@ public class Atom
 	}
 
 	@SuppressWarnings("unused")
-	private void moveLeaderInSquare()
+	private void addExternalCirculationInSquare()
 	{
 		int x = Atom.this.rect.x;
 		int y = Atom.this.rect.y;
@@ -265,20 +267,6 @@ public class Atom
 		}
 	}
 
-	@SuppressWarnings("unused")
-	private void moveLeaderInCircle()
-	{
-		Point center = new Point(AtomPanel.WIDTH / 2, AtomPanel.HEIGHT / 2);
-		THETA += D_THETA;
-		if (THETA > Math.PI)
-		{
-			THETA = -Math.PI;
-		}
-
-		Atom.this.rect.x = center.x + (int) (RADIUS * Math.cos(THETA));
-		Atom.this.rect.y = center.y + (int) (RADIUS * Math.sin(THETA));
-	}
-
 	public void move(int dx, int dy)
 	{
 		rect.x = (rect.x - dx) % AtomPanel.WIDTH; 
@@ -331,17 +319,5 @@ public class Atom
 	public int hashCode()
 	{
 		return id;
-	}
-
-	private class DoublePoint
-	{
-		public double x;
-		public double y;
-
-		public DoublePoint(double x, double y)
-		{
-			this.x = x;
-			this.y = y;
-		}
 	}
 }

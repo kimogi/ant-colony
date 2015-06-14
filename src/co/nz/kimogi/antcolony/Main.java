@@ -29,9 +29,41 @@ public class Main extends JFrame
 		public final static int HEIGHT = 500;
 		private final static int SZ = 2;
 
-		public static final Object atomsLock = new Object();
-		public static LinkedList<Atom> atoms = new LinkedList<Atom>();
+		public static int EX_FIELD_RADIUS = (WIDTH - 20)/ 2;
+		public static double EX_FIELD_PREV_THETA = 0;
+		public static double EX_FIELD_THETA = 0;
+		public static double EX_FIELD_D_THETA = Math.PI / 180;
+		public static double EX_FIELD_CENTER_X = WIDTH / 2.0;
+		public static double EX_FIELD_CENTER_Y = HEIGHT / 2.0;
+		public static double EX_FIELD_WIDTH = Atom.Re * 5.0;
 
+		public static final Object atomsLock = new Object();
+		public static final Object exFieldLock = new Object();
+		public static LinkedList<Atom> atoms = new LinkedList<Atom>();
+		private Thread exFieldThread = new Thread(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				while(true)
+				{
+					synchronized (exFieldLock)
+					{
+						EX_FIELD_PREV_THETA = EX_FIELD_THETA;
+						EX_FIELD_THETA += EX_FIELD_D_THETA;
+					}
+					try
+					{
+						Thread.sleep(10);
+					}
+					catch (InterruptedException e)
+					{
+						e.printStackTrace();
+					}
+				}
+			}
+		});
+		
 		public AtomPanel()
 		{
 			Random rand = new Random();
@@ -45,6 +77,7 @@ public class Main extends JFrame
 
 			setPreferredSize(new Dimension(WIDTH, HEIGHT));
 			setBackground(Color.WHITE);
+			exFieldThread.start();
 		}
 
 		public static ArrayList<Atom> getAtomsCopy()
@@ -65,6 +98,26 @@ public class Main extends JFrame
 				atom.rect = rect;
 				atoms.set(id, atom);
 			}
+		}
+
+		public static DoublePoint externalCirculatingFieldVelocity(Atom atom)
+		{
+			double vx = 0.0, vy = 0.0, x1, x2, y1, y2;
+
+			synchronized (exFieldLock)
+			{
+				x1 = EX_FIELD_CENTER_X + EX_FIELD_RADIUS * Math.cos(EX_FIELD_PREV_THETA);
+				y1 = EX_FIELD_CENTER_Y + EX_FIELD_RADIUS * Math.sin(EX_FIELD_PREV_THETA);
+				x2 = EX_FIELD_CENTER_X + EX_FIELD_RADIUS * Math.cos(EX_FIELD_THETA);
+				y2 = EX_FIELD_CENTER_Y + EX_FIELD_RADIUS * Math.sin(EX_FIELD_THETA);
+			}
+
+			int r1 = atom.distanceTo((int) x1, (int) y1);
+			int r2 = atom.distanceTo((int) x2, (int) y2);
+
+			vx = (r1 < EX_FIELD_WIDTH && r2 < EX_FIELD_WIDTH) ? x1 - x2 : 0;
+			vy = (r1 < EX_FIELD_WIDTH && r2 < EX_FIELD_WIDTH) ? y1 - y2 : 0;
+			return new DoublePoint(vx, vy);
 		}
 
 		public static void incrementCount()
@@ -145,8 +198,19 @@ public class Main extends JFrame
 			while (iter.hasNext())
 			{
 				Atom ant = iter.next();
-				g2.setColor(ant.color);
 
+				double exFieldX = 0;
+				double exFieldY = 0;
+
+				synchronized (exFieldLock)
+				{
+					exFieldX = EX_FIELD_CENTER_X + EX_FIELD_RADIUS * Math.cos(EX_FIELD_THETA);
+					exFieldY = EX_FIELD_CENTER_Y + EX_FIELD_RADIUS * Math.sin(EX_FIELD_THETA);
+				}
+				g2.setColor(Color.BLUE);
+				g2.fill(new Ellipse2D.Double(exFieldX - SZ, exFieldY - SZ, 2*SZ, 2*SZ));
+				
+				g2.setColor(ant.color);
 				g2.draw(new Ellipse2D.Double(ant.rect.x - Atom.Re / 2, ant.rect.y - Atom.Re / 2, Atom.Re, Atom.Re));
 				g2.fill(ant.rect);
 			}
@@ -157,7 +221,7 @@ public class Main extends JFrame
 	private static double currentErrorSampleCount = 0;
 	private static double currentErrorSum = 0;
 	private static int currentCount = 1;
-	private static double currentSpeed = Atom.THETA;
+	private static double currentSpeed = AtomPanel.EX_FIELD_THETA;
 	private static long currentTime = Atom.time;
 
 	public Main()
@@ -191,9 +255,9 @@ public class Main extends JFrame
 	@SuppressWarnings("unused")
 	private static void updateSpeedTriggeredError()
 	{
-		if (currentSpeed != Atom.D_THETA)
+		if (currentSpeed != AtomPanel.EX_FIELD_D_THETA)
 		{
-			System.out.println(Atom.D_THETA + " " + currentErrorSum / currentErrorSampleCount);
+			System.out.println(AtomPanel.EX_FIELD_D_THETA + " " + currentErrorSum / currentErrorSampleCount);
 			currentErrorSampleCount = 0;
 			currentErrorSum = 0;
 		}
@@ -202,7 +266,7 @@ public class Main extends JFrame
 			currentErrorSampleCount++;
 			currentErrorSum += calculateMaxDeviationError();
 		}
-		currentSpeed = Atom.D_THETA;
+		currentSpeed = AtomPanel.EX_FIELD_D_THETA;
 	}
 
 	@SuppressWarnings("unused")
