@@ -13,16 +13,18 @@ public class Atom
 	public static int SQUARE_SIDE = 0;
 	public static final int STEP = 2;
 
-	private static final double De = 200.0;
+	private static final double De = 100.0;
 	private static final double SCALE = 1.0;
 	public static final double Re = 30.0;
-	private static final double RANGE_OF_INTEREST = 2*Re;
+	private static final double RANGE_OF_INTEREST_MORSE = 2*Re;
 	private static final double E_EPSILON = 1.0;
 	private static final double Ke = 10.0;
 	private static final double A = Math.sqrt(Ke / (2.0*De));
 	private static final double DT = 1.0;
-	private static final double M = 1000.0;
+	private static final double M = 500.0;
 	private static final double Nu = 0.1;
+	private static final double Sigma = Re / Math.pow(2, 0.17);
+	private static final double RANGE_OF_INTEREST_LEONARD_JHONES = Re + Sigma;
 
 	private static double TEMP_K = 500;
 	private static final double D_TEMP_K =  0.0;
@@ -89,6 +91,30 @@ public class Atom
 		return SCALE * (-2 * De * Math.exp(-A * (r - Re)) + De * Math.exp(-2 * A * (r - Re)));
 	}
 
+	private double potentialLeonardJhones(int r)
+	{
+		return 4 * De * (Math.pow(Sigma / r, 12) - Math.pow(Sigma / r, 6));
+	}
+
+	private DoublePoint leonardJhonesVelocityTo(Atom ant)
+	{
+		int distance = distanceTo(ant);
+		double vx = 0.0;
+		double vy = 0.0;
+
+		if (distance < RANGE_OF_INTEREST_LEONARD_JHONES)
+		{
+			double Ep = potentialLeonardJhones(distance);
+			if (Math.abs(Ep) > E_EPSILON)
+			{
+				double speed = Math.signum(Ep) * Math.sqrt(2 * Math.abs(Ep) / M);
+				vx = speed * (ant.rect.x - rect.x) / (double) distance;
+				vy = speed * (ant.rect.y - rect.y) / (double) distance;
+			}
+		}		
+		return new DoublePoint(vx, vy);
+	}
+
 	private DoublePoint randDirection()
 	{
 		double theta = Math.toRadians((double) rand.nextInt(360));
@@ -114,7 +140,7 @@ public class Atom
 		double vx = 0.0;
 		double vy = 0.0;
 
-		if (distance < RANGE_OF_INTEREST)
+		if (distance < RANGE_OF_INTEREST_MORSE)
 		{
 			double Ep = potentialMorse(distance);
 			if (Math.abs(Ep) > E_EPSILON)
@@ -129,24 +155,29 @@ public class Atom
 
 	private DoublePoint completeVelocity()
 	{
+		double vx = 0.0;
+		double vy = 0.0;
+
 		DoublePoint termV = termPotentialVelocity();
-		double vx = termV.x;
-		double vy = termV.y;
+		vx = termV.x;
+		vy = termV.y;
 
 		for (Atom ant : AtomPanel.getAtomsCopy())
 		{
 			if (ant.id != this.id)
 			{
-				DoublePoint velocityToAnt = morseVelocityTo(ant);
+			//	DoublePoint velocityToAnt = morseVelocityTo(ant);
+				DoublePoint velocityToAnt = leonardJhonesVelocityTo(ant);
 				vx += velocityToAnt.x;
 				vy += velocityToAnt.y;
 			}
 		}
 
-		DoublePoint externalFieldVelocity = AtomPanel.externalCirculatingFieldVelocity(this);
+/*//		DoublePoint externalFieldVelocity = AtomPanel.externalCirculatingFieldVelocity(this);
+		DoublePoint externalFieldVelocity = AtomPanel.externalOscillatingFieldVelocity();
 		vx += externalFieldVelocity.x;
 		vy += externalFieldVelocity.y;
-		
+*/		
 		return new DoublePoint(vx, vy);
 	}
 

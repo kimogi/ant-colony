@@ -36,6 +36,7 @@ public class Main extends JFrame
 		public static double EX_FIELD_CENTER_X = WIDTH / 2.0;
 		public static double EX_FIELD_CENTER_Y = HEIGHT / 2.0;
 		public static double EX_FIELD_WIDTH = Atom.Re * 5.0;
+		public static double EX_FIELD_AMP = 5.0;
 
 		public static final Object atomsLock = new Object();
 		public static final Object exFieldLock = new Object();
@@ -117,6 +118,13 @@ public class Main extends JFrame
 
 			vx = (r1 < EX_FIELD_WIDTH && r2 < EX_FIELD_WIDTH) ? x1 - x2 : 0;
 			vy = (r1 < EX_FIELD_WIDTH && r2 < EX_FIELD_WIDTH) ? y1 - y2 : 0;
+			return new DoublePoint(vx, vy);
+		}
+
+		public static DoublePoint externalOscillatingFieldVelocity()
+		{
+			double vx = EX_FIELD_AMP * Math.sin(EX_FIELD_THETA);
+			double vy = 0;
 			return new DoublePoint(vx, vy);
 		}
 
