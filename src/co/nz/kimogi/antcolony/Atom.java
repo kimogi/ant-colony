@@ -24,7 +24,7 @@ public class Atom
 	private static final double M = 500.0;
 	private static final double Nu = 0.1;
 	private static final double Sigma = Re / Math.pow(2, 0.17);
-	private static final double RANGE_OF_INTEREST_LEONARD_JHONES = Re + Sigma;
+	private static final double RANGE_OF_INTEREST_LEONARD_JOHNS = Re + Sigma;
 
 	private static double TEMP_K = 500;
 	private static final double D_TEMP_K =  0.0;
@@ -91,20 +91,20 @@ public class Atom
 		return SCALE * (-2 * De * Math.exp(-A * (r - Re)) + De * Math.exp(-2 * A * (r - Re)));
 	}
 
-	private double potentialLeonardJhones(int r)
+	private double potentialLeonardJohns(int r)
 	{
 		return 4 * De * (Math.pow(Sigma / r, 12) - Math.pow(Sigma / r, 6));
 	}
 
-	private DoublePoint leonardJhonesVelocityTo(Atom ant)
+	private DoublePoint leonardJohnsVelocityTo(Atom ant)
 	{
 		int distance = distanceTo(ant);
 		double vx = 0.0;
 		double vy = 0.0;
 
-		if (distance < RANGE_OF_INTEREST_LEONARD_JHONES)
+		if (distance < RANGE_OF_INTEREST_LEONARD_JOHNS)
 		{
-			double Ep = potentialLeonardJhones(distance);
+			double Ep = potentialLeonardJohns(distance);
 			if (Math.abs(Ep) > E_EPSILON)
 			{
 				double speed = Math.signum(Ep) * Math.sqrt(2 * Math.abs(Ep) / M);
@@ -167,7 +167,7 @@ public class Atom
 			if (ant.id != this.id)
 			{
 			//	DoublePoint velocityToAnt = morseVelocityTo(ant);
-				DoublePoint velocityToAnt = leonardJhonesVelocityTo(ant);
+				DoublePoint velocityToAnt = leonardJohnsVelocityTo(ant);
 				vx += velocityToAnt.x;
 				vy += velocityToAnt.y;
 			}
