@@ -6,30 +6,29 @@ import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.Random;
 
-import co.nz.kimogi.antcolony.Main.AtomPanel;
+import co.nz.kimogi.antcolony.Main.MainPanel;
 
-public class Atom
+public class Unit
 {
 	public static int SQUARE_SIDE = 0;
 	public static final int STEP = 2;
 
-	private static final double De = 100.0;
+	private static final double De = 300.0;
 	private static final double SCALE = 1.0;
-	public static final double Re = 30.0;
+	public static final double Re = 30;
 	private static final double RANGE_OF_INTEREST_MORSE = 2*Re;
 	private static final double E_EPSILON = 1.0;
 	private static final double Ke = 10.0;
 	private static final double A = Math.sqrt(Ke / (2.0*De));
 	private static final double DT = 1.0;
-	private static final double M = 500.0;
-	private static final double Nu = 0.1;
+	private static final double M = 4500.0;
+	private static final double Nu = 1.0;
 	private static final double Sigma = Re / Math.pow(2, 0.17);
 	private static final double RANGE_OF_INTEREST_LEONARD_JOHNS = Re + Sigma;
 
-	private static double TEMP_K = 500;
-	private static final double D_TEMP_K =  0.0;
-	private static final double CONSTANT_R = 8.31;
-
+	private static final double GAUSS_1_DEVIDED_BY_SIGMA = 6;
+	private static final double LINKS_COUNT = 3;
+	
 	public int id;
 	public Rectangle rect;
 	public Rectangle prevrect = null;
@@ -38,16 +37,14 @@ public class Atom
 	public Runnable runnable = null;
 	public Random rand;
 
-	public static long time = 0;
-
-	public Atom(int id, Rectangle rectangle, Random rand)
+	public Unit(int id, Rectangle rectangle, Random rand)
 	{
 		this.id = id;
 		this.rect = rectangle;
 		this.prevrect = (Rectangle) rect.clone();
 		this.rand = rand;
 		this.color = Color.RED;
-
+		
 		this.runnable = new Runnable()
 		{
 			@Override
@@ -55,14 +52,11 @@ public class Atom
 			{
 				while (true)
 				{
-					TEMP_K += D_TEMP_K;
-				//	System.out.println("Temp : " + TEMP_K);
-					
 					prevrect.x = rect.x;
 					prevrect.y = rect.y;
 
 					fluctuatePositionByMorse();
-					AtomPanel.updateAnt(Atom.this.id, Atom.this.rect);
+					MainPanel.updateUnit(Unit.this.id, Unit.this.rect);
 
 					try
 					{
@@ -81,9 +75,18 @@ public class Atom
 		this.process.start();
 	}
 
-	private double termPotential()
+	private double linkForceTo(Unit unit, double amp)
 	{
-		return 3.0 * Nu * CONSTANT_R * TEMP_K / 2.0;
+		double distance = Double.valueOf(distanceTo(unit));
+		DoublePoint e = new DoublePoint((unit.rect.x - rect.x) / distance, (unit.rect.y - rect.y) / distance);
+		double theta = Math.atan(e.y / e.x);
+		
+		return amp * Math.exp(-Math.pow(GAUSS_1_DEVIDED_BY_SIGMA * Math.sin(LINKS_COUNT * theta / 2), 2));
+	}
+	
+	private double termEk()
+	{
+		return 3.0 * Nu * MainPanel.CONSTANT_R * MainPanel.TEMP_K / 2.0;
 	}
 
 	private double potentialMorse(int r)
@@ -96,47 +99,64 @@ public class Atom
 		return 4 * De * (Math.pow(Sigma / r, 12) - Math.pow(Sigma / r, 6));
 	}
 
-	private DoublePoint leonardJohnsVelocityTo(Atom ant)
+	private DoublePoint leonardJohnsVelocityTo(Unit unit)
 	{
-		int distance = distanceTo(ant);
+		int distance = distanceTo(unit);
 		double vx = 0.0;
 		double vy = 0.0;
 
 		if (distance < RANGE_OF_INTEREST_LEONARD_JOHNS)
 		{
 			double Ep = potentialLeonardJohns(distance);
+			double phi = Math.atan((unit.rect.x - rect.x) / (unit.rect.y - rect.y));
+			Ep = Ep * Math.cos(phi % Math.PI/3);
+			
 			if (Math.abs(Ep) > E_EPSILON)
 			{
 				double speed = Math.signum(Ep) * Math.sqrt(2 * Math.abs(Ep) / M);
-				vx = speed * (ant.rect.x - rect.x) / (double) distance;
-				vy = speed * (ant.rect.y - rect.y) / (double) distance;
+				vx = speed * (unit.rect.x - rect.x) / (double) distance;
+				vy = speed * (unit.rect.y - rect.y) / (double) distance;
 			}
 		}		
 		return new DoublePoint(vx, vy);
 	}
 
+	@SuppressWarnings("unused")
 	private DoublePoint randDirection()
 	{
 		double theta = Math.toRadians((double) rand.nextInt(360));
 		return new DoublePoint(Math.cos(theta), Math.sin(theta));
 	}
 
+	private DoublePoint eToCenterFrom(Unit unit)
+	{
+		double x = unit.rect.x - MainPanel.WIDTH/2;
+		double y = unit.rect.y - MainPanel.HEIGHT/2;
+		x = x / (double)(unit.distanceTo(MainPanel.WIDTH / 2, MainPanel.HEIGHT / 2));
+		y = y / (double)(unit.distanceTo(MainPanel.WIDTH / 2, MainPanel.HEIGHT / 2));
+		return new DoublePoint(x, y);
+	}
+
 	private DoublePoint termPotentialVelocity()
 	{
-		double U = termPotential();
-		double speed = Math.sqrt(2 * U / M);
+		double Ek = termEk();
+		double speed = Math.sqrt(2 * Ek / M);
 
-		DoublePoint e = randDirection();
-
+		//DoublePoint e = randDirection();
+		DoublePoint e = eToCenterFrom(this);
+		
+		System.out.println(speed);
+		
 		double vx = speed * e.x;
 		double vy = speed * e.y;
 
 		return new DoublePoint(vx, vy);
 	}
 
-	private DoublePoint morseVelocityTo(Atom ant)
+	@SuppressWarnings("unused")
+	private DoublePoint morseVelocityTo(Unit unit)
 	{
-		int distance = distanceTo(ant);
+		int distance = distanceTo(unit);
 		double vx = 0.0;
 		double vy = 0.0;
 
@@ -146,8 +166,8 @@ public class Atom
 			if (Math.abs(Ep) > E_EPSILON)
 			{
 				double speed = Math.signum(Ep) * Math.sqrt(2 * Math.abs(Ep) / M);
-				vx = speed * (ant.rect.x - rect.x) / (double) distance;
-				vy = speed * (ant.rect.y - rect.y) / (double) distance;
+				vx = speed * (unit.rect.x - rect.x) / (double) distance;
+				vy = speed * (unit.rect.y - rect.y) / (double) distance;
 			}
 		}		
 		return new DoublePoint(vx, vy);
@@ -162,22 +182,20 @@ public class Atom
 		vx = termV.x;
 		vy = termV.y;
 
-		for (Atom ant : AtomPanel.getAtomsCopy())
+		for (Unit ant : MainPanel.getAtomsCopy())
 		{
 			if (ant.id != this.id)
 			{
-			//	DoublePoint velocityToAnt = morseVelocityTo(ant);
 				DoublePoint velocityToAnt = leonardJohnsVelocityTo(ant);
 				vx += velocityToAnt.x;
 				vy += velocityToAnt.y;
 			}
 		}
 
-/*//		DoublePoint externalFieldVelocity = AtomPanel.externalCirculatingFieldVelocity(this);
-		DoublePoint externalFieldVelocity = AtomPanel.externalOscillatingFieldVelocity();
+		DoublePoint externalFieldVelocity = MainPanel.externalOscillatingFieldVelocity();
 		vx += externalFieldVelocity.x;
 		vy += externalFieldVelocity.y;
-*/		
+		
 		return new DoublePoint(vx, vy);
 	}
 
@@ -191,20 +209,20 @@ public class Atom
 		move(dx, dy);
 	}
 
-	public Point getDGrad()
+	public Point getMotionGradient()
 	{
 		int prevX = this.prevrect.x;
 		int prevY = this.prevrect.y;
 		int x = this.rect.x;
 		int y = this.rect.y;
 
-		int dGradX = (int)((x - prevX) * Re / 4.0);
-		int dGradY = (int)((y - prevY) * Re / 4.0);
-		return new Point(dGradX, dGradY);
+		int gradX = (int)((x - prevX) * Re / 4.0);
+		int gradY = (int)((y - prevY) * Re / 4.0);
+		return new Point(gradX, gradY);
 	}
 
 	@SuppressWarnings("unused")
-	private boolean isAlongWithGradOf(Atom target)
+	private boolean isAlongWithMotionGradientOf(Unit target)
 	{
 		int prevX = target.prevrect.x;
 		int prevY = target.prevrect.y;
@@ -228,13 +246,13 @@ public class Atom
 		Point edgeSecondVect = new Point(edgeSecondX, edgeSecondY);
 
 		Point antVect = new Point(this.rect.x, this.rect.y);
-		double vectFirstZ = normVectorProductZ(edgeFirstVect, antVect);
-		double vectSecondZ = normVectorProductZ(antVect, edgeSecondVect);
+		double vectFirstZ = normVectorProductMagnitude(edgeFirstVect, antVect);
+		double vectSecondZ = normVectorProductMagnitude(antVect, edgeSecondVect);
 
 		return Math.signum(vectFirstZ) == Math.signum(vectSecondZ);
 	}
 
-	private double normVectorProductZ(Point a, Point b)
+	private double normVectorProductMagnitude(Point a, Point b)
 	{
 		double len = (Math.sqrt((double) (a.x * a.x + a.y * a.y)) * Math.sqrt((double) (b.x * b.x + b.y * b.y)));
 		double vect = (double) (a.x * b.y - a.y * b.x);
@@ -245,15 +263,15 @@ public class Atom
 	@SuppressWarnings("unused")
 	private void addExternalCirculationInSquare()
 	{
-		int x = Atom.this.rect.x;
-		int y = Atom.this.rect.y;
+		int x = Unit.this.rect.x;
+		int y = Unit.this.rect.y;
 
 		if (SQUARE_SIDE == 0)
 		{
 			if (x < 600)
 			{
-				Atom.this.rect.x = x + STEP;
-				Atom.this.rect.y = 200;
+				Unit.this.rect.x = x + STEP;
+				Unit.this.rect.y = 200;
 			}
 			else
 			{
@@ -264,8 +282,8 @@ public class Atom
 		{
 			if (y < 600)
 			{
-				Atom.this.rect.x = 600;
-				Atom.this.rect.y = y + STEP;
+				Unit.this.rect.x = 600;
+				Unit.this.rect.y = y + STEP;
 			}
 			else
 			{
@@ -276,8 +294,8 @@ public class Atom
 		{
 			if (x > 200)
 			{
-				Atom.this.rect.x = x - STEP;
-				Atom.this.rect.y = 600;
+				Unit.this.rect.x = x - STEP;
+				Unit.this.rect.y = 600;
 			}
 			else
 			{
@@ -288,8 +306,8 @@ public class Atom
 		{
 			if (y > 200)
 			{
-				Atom.this.rect.x = 200;
-				Atom.this.rect.y = y - STEP;
+				Unit.this.rect.x = 200;
+				Unit.this.rect.y = y - STEP;
 			}
 			else
 			{
@@ -300,13 +318,13 @@ public class Atom
 
 	public void move(int dx, int dy)
 	{
-		rect.x = (rect.x - dx) % AtomPanel.WIDTH; 
-		rect.y = (rect.y - dy) % AtomPanel.HEIGHT;
+		rect.x = (MainPanel.WIDTH + rect.x - dx) % MainPanel.WIDTH;
+		rect.y = (MainPanel.HEIGHT + rect.y - dy) % MainPanel.HEIGHT;
 	}
 
-	public int distanceTo(Atom atom)
+	public int distanceTo(Unit unit)
 	{
-		return (int) Math.sqrt((rect.x - atom.rect.x) * (rect.x - atom.rect.x) + (rect.y - atom.rect.y) * (rect.y - atom.rect.y));
+		return (int) Math.sqrt((rect.x - unit.rect.x) * (rect.x - unit.rect.x) + (rect.y - unit.rect.y) * (rect.y - unit.rect.y));
 	}
 
 	public int distanceTo(int x, int y)
@@ -315,18 +333,18 @@ public class Atom
 	}
 
 	@SuppressWarnings("unused")
-	private Atom getNearestAnt(ArrayList<Atom> atoms)
+	private Unit getNearestUnitFrom(ArrayList<Unit> units)
 	{
-		Atom nearest = null;
-		for (Atom atom : atoms)
+		Unit nearest = null;
+		for (Unit unit : units)
 		{
 			if (nearest == null)
 			{
-				nearest = atom;
+				nearest = unit;
 			}
-			else if (distanceTo(atom) < distanceTo(nearest))
+			else if (distanceTo(unit) < distanceTo(nearest))
 			{
-				nearest = atom;
+				nearest = unit;
 			}
 		}
 		return nearest;
@@ -341,8 +359,8 @@ public class Atom
 		}
 		else
 		{
-			Atom atom = (Atom) obj;
-			return id == atom.id;
+			Unit unit = (Unit) obj;
+			return id == unit.id;
 		}
 	}
 

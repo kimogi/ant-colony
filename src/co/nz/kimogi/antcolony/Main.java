@@ -21,32 +21,32 @@ public class Main extends JFrame
 	private static final long serialVersionUID = -3079870385792199691L;
 	public static int count = 0;
 
-	public static class AtomPanel extends JPanel
+	public static class MainPanel extends JPanel
 	{
 		private static final long serialVersionUID = -9027962180934835275L;
-		public final static int NUM_ATOMS = 100;
+		public final static int NUM_UNITS = 100;
 		public final static int WIDTH = 500;
 		public final static int HEIGHT = 500;
 		private final static int SZ = 2;
 
-		public static int EX_FIELD_RADIUS = (WIDTH - 20)/ 2;
+		public static int EX_FIELD_RADIUS = (WIDTH - 20) / 2;
 		public static double EX_FIELD_PREV_THETA = 0;
 		public static double EX_FIELD_THETA = 0;
-		public static double EX_FIELD_D_THETA = Math.PI / 180;
+		public static double EX_FIELD_D_THETA = 0;//Math.PI / 90;
 		public static double EX_FIELD_CENTER_X = WIDTH / 2.0;
 		public static double EX_FIELD_CENTER_Y = HEIGHT / 2.0;
-		public static double EX_FIELD_WIDTH = Atom.Re * 5.0;
+		public static double EX_FIELD_WIDTH = Unit.Re * 5.0;
 		public static double EX_FIELD_AMP = 5.0;
 
-		public static final Object atomsLock = new Object();
+		public static final Object unitsLock = new Object();
 		public static final Object exFieldLock = new Object();
-		public static LinkedList<Atom> atoms = new LinkedList<Atom>();
+		public static LinkedList<Unit> units = new LinkedList<Unit>();
 		private Thread exFieldThread = new Thread(new Runnable()
 		{
 			@Override
 			public void run()
 			{
-				while(true)
+				while (true)
 				{
 					synchronized (exFieldLock)
 					{
@@ -64,44 +64,71 @@ public class Main extends JFrame
 				}
 			}
 		});
-		
-		public AtomPanel()
+
+		public static double TEMP_K = 300;
+		public static final double CONSTANT_R = 8.31;
+		private static final double D_TEMP_K = 0;
+
+		private Thread tempThread = new Thread(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				while (TEMP_K > 0)
+				{
+					TEMP_K += D_TEMP_K;
+					System.out.println("Temp : " + TEMP_K);
+					
+					try
+					{
+						Thread.sleep(200);
+					}
+					catch (InterruptedException e)
+					{
+						e.printStackTrace();
+					}
+				}
+			}
+		});
+
+		public MainPanel()
 		{
 			Random rand = new Random();
-			synchronized (atomsLock)
+			synchronized (unitsLock)
 			{
-				for (int i = 0; i < NUM_ATOMS; i++)
+				for (int i = 0; i < NUM_UNITS; i++)
 				{
-					atoms.addLast(new Atom(i, new Rectangle(rand.nextInt(WIDTH), rand.nextInt(HEIGHT), SZ, SZ), rand));
+					units.addLast(new Unit(i, new Rectangle(rand.nextInt(WIDTH), rand.nextInt(HEIGHT), SZ, SZ), rand));
 				}
 			}
 
 			setPreferredSize(new Dimension(WIDTH, HEIGHT));
 			setBackground(Color.WHITE);
 			exFieldThread.start();
+			tempThread.start();
 		}
 
-		public static ArrayList<Atom> getAtomsCopy()
+		public static ArrayList<Unit> getAtomsCopy()
 		{
-			ArrayList<Atom> atomsCopy = new ArrayList<Atom>();
-			synchronized (atomsLock)
+			ArrayList<Unit> unitsCopy = new ArrayList<Unit>();
+			synchronized (unitsLock)
 			{
-				atomsCopy.addAll(atoms);
+				unitsCopy.addAll(units);
 			}
-			return atomsCopy;
+			return unitsCopy;
 		}
 
-		public static void updateAnt(int id, Rectangle rect)
+		public static void updateUnit(int id, Rectangle rect)
 		{
-			synchronized (atomsLock)
+			synchronized (unitsLock)
 			{
-				Atom atom = atoms.get(id);
-				atom.rect = rect;
-				atoms.set(id, atom);
+				Unit unit = units.get(id);
+				unit.rect = rect;
+				units.set(id, unit);
 			}
 		}
 
-		public static DoublePoint externalCirculatingFieldVelocity(Atom atom)
+		public static DoublePoint externalCirculatingFieldVelocity(Unit unit)
 		{
 			double vx = 0.0, vy = 0.0, x1, x2, y1, y2;
 
@@ -113,8 +140,8 @@ public class Main extends JFrame
 				y2 = EX_FIELD_CENTER_Y + EX_FIELD_RADIUS * Math.sin(EX_FIELD_THETA);
 			}
 
-			int r1 = atom.distanceTo((int) x1, (int) y1);
-			int r2 = atom.distanceTo((int) x2, (int) y2);
+			int r1 = unit.distanceTo((int) x1, (int) y1);
+			int r2 = unit.distanceTo((int) x2, (int) y2);
 
 			vx = (r1 < EX_FIELD_WIDTH && r2 < EX_FIELD_WIDTH) ? x1 - x2 : 0;
 			vy = (r1 < EX_FIELD_WIDTH && r2 < EX_FIELD_WIDTH) ? y1 - y2 : 0;
@@ -130,7 +157,7 @@ public class Main extends JFrame
 
 		public static void incrementCount()
 		{
-			synchronized (atomsLock)
+			synchronized (unitsLock)
 			{
 				count++;
 			}
@@ -138,31 +165,31 @@ public class Main extends JFrame
 
 		public static int getCount()
 		{
-			synchronized (atomsLock)
+			synchronized (unitsLock)
 			{
 				return count;
 			}
 		}
 
-		public static ArrayList<Atom> getNearBy(Atom target, int smallRadius, int bigRadius, boolean includeLocked)
+		public static ArrayList<Unit> getNearBy(Unit target, int smallRadius, int bigRadius, boolean includeLocked)
 		{
-			ArrayList<Atom> neighbours = new ArrayList<Atom>();
-			synchronized (atomsLock)
+			ArrayList<Unit> neighbours = new ArrayList<Unit>();
+			synchronized (unitsLock)
 			{
-				for (Atom atom : atoms)
+				for (Unit unit : units)
 				{
-					if (!atom.equals(target) && target.distanceTo(atom) < bigRadius && target.distanceTo(atom) > smallRadius && atom.color != Color.GRAY)
+					if (!unit.equals(target) && target.distanceTo(unit) < bigRadius && target.distanceTo(unit) > smallRadius && unit.color != Color.GRAY)
 					{
-						if (atom.color == Color.RED)
+						if (unit.color == Color.RED)
 						{
 							if (includeLocked)
 							{
-								neighbours.add(atom);
+								neighbours.add(unit);
 							}
 						}
 						else
 						{
-							neighbours.add(atom);
+							neighbours.add(unit);
 						}
 					}
 				}
@@ -170,25 +197,25 @@ public class Main extends JFrame
 			return neighbours;
 		}
 
-		public static ArrayList<Atom> getNearBy(Point point, int smallRadius, int bigRadius, boolean includeLocked)
+		public static ArrayList<Unit> getNearBy(Point point, int smallRadius, int bigRadius, boolean includeLocked)
 		{
-			ArrayList<Atom> neighbours = new ArrayList<Atom>();
-			synchronized (atomsLock)
+			ArrayList<Unit> neighbours = new ArrayList<Unit>();
+			synchronized (unitsLock)
 			{
-				for (Atom atom : atoms)
+				for (Unit unit : units)
 				{
-					if (atom.distanceTo(point.x, point.y) < bigRadius && atom.distanceTo(point.x, point.y) > smallRadius && atom.color != Color.GRAY)
+					if (unit.distanceTo(point.x, point.y) < bigRadius && unit.distanceTo(point.x, point.y) > smallRadius && unit.color != Color.GRAY)
 					{
-						if (atom.color == Color.RED)
+						if (unit.color == Color.RED)
 						{
 							if (includeLocked)
 							{
-								neighbours.add(atom);
+								neighbours.add(unit);
 							}
 						}
 						else
 						{
-							neighbours.add(atom);
+							neighbours.add(unit);
 						}
 					}
 				}
@@ -202,10 +229,10 @@ public class Main extends JFrame
 			Graphics2D g2 = (Graphics2D) g;
 			g2.clearRect(0, 0, WIDTH, HEIGHT);
 
-			Iterator<Atom> iter = AtomPanel.getAtomsCopy().iterator();
+			Iterator<Unit> iter = MainPanel.getAtomsCopy().iterator();
 			while (iter.hasNext())
 			{
-				Atom ant = iter.next();
+				Unit ant = iter.next();
 
 				double exFieldX = 0;
 				double exFieldY = 0;
@@ -216,56 +243,38 @@ public class Main extends JFrame
 					exFieldY = EX_FIELD_CENTER_Y + EX_FIELD_RADIUS * Math.sin(EX_FIELD_THETA);
 				}
 				g2.setColor(Color.BLUE);
-				g2.fill(new Ellipse2D.Double(exFieldX - SZ, exFieldY - SZ, 2*SZ, 2*SZ));
-				
+				g2.fill(new Ellipse2D.Double(exFieldX - SZ, exFieldY - SZ, 2 * SZ, 2 * SZ));
+
 				g2.setColor(ant.color);
-				g2.draw(new Ellipse2D.Double(ant.rect.x - Atom.Re / 2, ant.rect.y - Atom.Re / 2, Atom.Re, Atom.Re));
+				g2.draw(new Ellipse2D.Double(ant.rect.x - Unit.Re / 2, ant.rect.y - Unit.Re / 2, Unit.Re, Unit.Re));
 				g2.fill(ant.rect);
 			}
 		}
 	}
 
-	private static AtomPanel atomPanel = new AtomPanel();
+	private static MainPanel mainPanel = new MainPanel();
 	private static double currentErrorSampleCount = 0;
 	private static double currentErrorSum = 0;
 	private static int currentCount = 1;
-	private static double currentSpeed = AtomPanel.EX_FIELD_THETA;
-	private static long currentTime = Atom.time;
+	private static double currentSpeed = MainPanel.EX_FIELD_THETA;
 
 	public Main()
 	{
-		getContentPane().add(atomPanel);
+		getContentPane().add(mainPanel);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
 
 	public static void updateView()
 	{
-		atomPanel.repaint();
-	}
-
-	@SuppressWarnings("unused")
-	private static void updateTimeTriggeredError()
-	{
-		if (Math.abs(currentTime - Atom.time) > 10)
-		{
-			System.out.println(String.format("%d %.4f", Atom.time, calculateMaxDeviationError()));
-			currentErrorSampleCount = 0;
-			currentErrorSum = 0;
-			currentTime = Atom.time;
-		}
-		else
-		{
-			currentErrorSampleCount++;
-			currentErrorSum += calculateMaxDeviationError();
-		}
+		mainPanel.repaint();
 	}
 
 	@SuppressWarnings("unused")
 	private static void updateSpeedTriggeredError()
 	{
-		if (currentSpeed != AtomPanel.EX_FIELD_D_THETA)
+		if (currentSpeed != MainPanel.EX_FIELD_D_THETA)
 		{
-			System.out.println(AtomPanel.EX_FIELD_D_THETA + " " + currentErrorSum / currentErrorSampleCount);
+			System.out.println(MainPanel.EX_FIELD_D_THETA + " " + currentErrorSum / currentErrorSampleCount);
 			currentErrorSampleCount = 0;
 			currentErrorSum = 0;
 		}
@@ -274,15 +283,15 @@ public class Main extends JFrame
 			currentErrorSampleCount++;
 			currentErrorSum += calculateMaxDeviationError();
 		}
-		currentSpeed = AtomPanel.EX_FIELD_D_THETA;
+		currentSpeed = MainPanel.EX_FIELD_D_THETA;
 	}
 
 	@SuppressWarnings("unused")
 	private static void updateNumTriggeredError()
 	{
-		if (currentCount != AtomPanel.getCount())
+		if (currentCount != MainPanel.getCount())
 		{
-			System.out.println(AtomPanel.getCount() + " " + currentErrorSum / currentErrorSampleCount);
+			System.out.println(MainPanel.getCount() + " " + currentErrorSum / currentErrorSampleCount);
 			currentErrorSampleCount = 0;
 			currentErrorSum = 0;
 		}
@@ -291,25 +300,25 @@ public class Main extends JFrame
 			currentErrorSampleCount++;
 			currentErrorSum += calculateMaxDeviationError();
 		}
-		currentCount = AtomPanel.getCount();
+		currentCount = MainPanel.getCount();
 	}
 
 	private static double calculateMaxDeviationError()
 	{
-		double atomMaxDeviation = 0;
-		for (Atom atom : AtomPanel.getAtomsCopy())
+		double unitMaxDeviation = 0;
+		for (Unit unit : MainPanel.getAtomsCopy())
 		{
-			ArrayList<Atom> nearAtoms = AtomPanel.getNearBy(atom, 0, (int) (1.5 * Atom.Re), true);
-			for (Atom atomLink : nearAtoms)
+			ArrayList<Unit> nearAtoms = MainPanel.getNearBy(unit, 0, (int) (1.5 * Unit.Re), true);
+			for (Unit atomLink : nearAtoms)
 			{
-				int distance = atom.distanceTo(atomLink);
-				if (Math.abs(distance - Atom.Re) > atomMaxDeviation)
+				int distance = unit.distanceTo(atomLink);
+				if (Math.abs(distance - Unit.Re) > unitMaxDeviation)
 				{
-					atomMaxDeviation = Math.abs(distance - Atom.Re);
+					unitMaxDeviation = Math.abs(distance - Unit.Re);
 				}
 			}
 		}
-		return atomMaxDeviation / (double) Atom.Re;
+		return unitMaxDeviation / (double) Unit.Re;
 	}
 
 	public static void createAndShowGUI()
